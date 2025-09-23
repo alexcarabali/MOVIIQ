@@ -1,0 +1,194 @@
+/* ==== Botón de cerrar (X) ====*/
+/*.section.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  color: #333;
+  transition: transform 0.2s;
+}
+
+.close-btn:hover {
+  transform: scale(1.2);
+  color: black;
+} */
+
+.section-login {
+  background-color: #212529;
+  width: 350px;
+  height: 430px;
+  padding: 20px;
+  border-radius: 30px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.section-login form {
+  text-align: left;
+  justify-content: center;
+  margin: 0px;
+}
+
+.section-login .icono-usuario {
+  color: white;
+}
+
+.msj-estado {
+  color: white;
+}
+
+.section-login h2 {
+  text-align: center;
+  color: white;
+}
+
+.section-login h3 {
+  font-size: 15px;
+  margin: 5px;
+  color: white;
+}
+.section-login h4 {
+  color: white;
+  display: flex;
+  align-items: center; /* alinea verticalmente */
+  gap: 5px;
+  /* text-align: center; */
+}
+
+.section-login .recuperar-contraseña {
+  font-size: 13px;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  text-align: center;
+  text-decoration: none;
+  color: #40a8f4;
+}
+.registro-container {
+  display: flex;
+  align-items: center; /* alinea verticalmente */
+  gap: 8px; /* espacio entre h4 y a */
+  justify-content: center; /* opcional: centra horizontalmente */
+}
+
+.registro-container h4 {
+  margin: 0; /* quita márgenes por defecto */
+  color: white;
+  font-size: 12.5px;
+}
+
+.registro-container a {
+  text-decoration: none; /* quita subrayado */
+  color: #40a8f4;
+  font-size: 12.5px;
+}
+
+/* .a-registro {
+  position: absolute;
+} */
+
+.section-login input {
+  width: calc(100% - 10px);
+  margin: 5px;
+  background-color: #495057;
+  padding: 10px;
+  border-radius: 10px;
+  border: solid 1px #41484e;
+  color: white;
+}
+.section-login form button {
+  width: calc(100% - 10px);
+  margin: 5px;
+  margin-top: 10px;
+  background-color: #40a8f4;
+  color: white;
+  font-size: medium;
+  padding: 10px;
+  border-radius: 30px;
+}
+
+.section-login form {
+  margin: 20px;
+}
+
+@media (max-width: 480px) {
+  .section-login {
+    padding: 15px;
+    border-radius: 20px;
+  }
+
+  .section-login h2 {
+    font-size: 1.2rem;
+  }
+
+  .section-login h3 {
+    font-size: 0.8rem;
+  }
+
+  .section-login form {
+    margin: 20px 0;
+  }
+}
+
+/* overlay: ocupa toda la pantalla */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6); /* efecto oscuro */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999; /* encima de todo */
+}
+
+/* caja de login */
+.login-box {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  width: 350px;
+  max-width: 90%;
+  text-align: center;
+}
+
+.login-box h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.login-box input {
+  display: block;
+  width: 100%;
+  padding: 0.8rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+}
+
+.login-box button {
+  width: 100%;
+  padding: 0.8rem;
+  background: #0070f3;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.login-box button:hover {
+  background: #0059c1;
+}

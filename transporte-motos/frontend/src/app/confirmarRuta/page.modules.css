@@ -1,0 +1,86 @@
+/* page.modules.css */
+
+/* Contenedor principal */
+.home-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background-color: #f5f5f5;
+}
+
+/* Título de la página */
+.titulo-confirmar {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Contenedor del mapa más pequeño */
+.mapa-confirmar-container {
+  width: 100%;
+  max-width: 500px; /* Ajusta al tamaño deseado */
+  height: 300px; /* Más pequeño que la página principal */
+  margin-bottom: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Detalles del viaje */
+.detalles-viaje {
+  width: 100%;
+  max-width: 500px;
+  background-color: #fff;
+  padding: 15px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.detalles-viaje p {
+  font-size: 1rem;
+  margin: 6px 0;
+  color: #444;
+}
+
+.detalles-viaje strong {
+  color: #000;
+}
+
+/* Botón confirmar viaje */
+.btn-confirmar-viaje {
+  width: 100%;
+  padding: 12px;
+  background-color: #4f46e5; /* azul/ morado */
+  color: #fff;
+  font-size: 1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 15px;
+}
+
+.btn-confirmar-viaje:hover {
+  background-color: #3730a3;
+}
+
+/* Responsividad */
+@media screen and (max-width: 600px) {
+  .mapa-confirmar-container,
+  .detalles-viaje {
+    max-width: 90%;
+  }
+
+  .titulo-confirmar {
+    font-size: 1.5rem;
+  }
+
+  .btn-confirmar-viaje {
+    font-size: 0.95rem;
+  }
+}

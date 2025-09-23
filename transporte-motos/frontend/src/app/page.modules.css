@@ -1,0 +1,317 @@
+/* ==== HERO SECTION ==== */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 4rem 5rem;
+  background: linear-gradient(135deg, #8f85f9 40%, #1e1e2f 100%);
+  color: black;
+  flex-wrap: wrap;
+  border-bottom-left-radius: 35px;
+  border-bottom-right-radius: 35px;
+}
+
+.hero-content {
+  flex: 1;
+  min-width: 280px;
+}
+
+.hero-content h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.hero-content p {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  color: #495057;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeSlideUp 1s ease forwards, floatText 6s ease-in-out infinite;
+  animation-delay: 0.5s, 1.5s;
+}
+
+@keyframes fadeSlideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes floatText {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px); /* sube un poco */
+  }
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.hero-actions .btn {
+  padding: 0.8rem 1.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.btn.primario {
+  background: #6c5ce7;
+  color: #fff;
+}
+
+.btn.primario:hover {
+  background: #5443d7;
+}
+
+.btn.secundario {
+  background: transparent;
+  color: #fff;
+  border: 2px solid #fff;
+}
+
+.btn.secundario:hover {
+  background: #fff;
+  color: #000;
+}
+
+.hero-image {
+  flex: 1;
+  max-width: 500px;
+  min-width: 280px;
+  max-height: 400px;
+  min-height: 260px;
+  display: flex;
+  justify-content: center;
+}
+
+.hero-image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ==== BENEFITS SECTION ==== */
+.benefits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5rem;
+  padding: 4rem 2rem;
+  background: #f9f9f9;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+}
+
+/**************************************************/
+.benefits-slider {
+  display: flex;
+  gap: 5rem;
+  max-width: 81%;
+  background: none;
+  overflow-x: auto;
+  padding: 5px;
+  scroll-behavior: smooth;
+  scrollbar-width: none; /* Firefox */
+  position: relative; /* Para posicionar flechas */
+}
+
+.benefits-slider::-webkit-scrollbar {
+  display: none; /* Chrome */
+}
+
+/* Flechas */
+.arrow {
+  position: absolute;
+  /* top: 50%;
+  transform: translateY(-50%); */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background 0.2s;
+  z-index: 10;
+}
+
+.arrow:hover {
+  background: #f0f0f0;
+}
+
+.arrow.left {
+  left: 2.5rem;
+}
+
+.arrow.right {
+  right: 2.5rem;
+}
+
+/**************************************************/
+.benefit {
+  flex: 1 1 240px; /* se adapta al espacio disponible */
+  max-width: 210px;
+  max-height: 250; /* límite para que no se deforme */
+  border: solid 2px #8f85f9;
+  border-radius: 15px;
+  transition: transform 0.3s ease;
+  padding: 1rem;
+}
+
+.benefit:hover {
+  transform: translateY(-5px);
+}
+
+.benefit img {
+  margin: 15px auto;
+  width: 100%;
+  max-width: 160px;
+  max-height: 110px;
+  min-height: 110px;
+  height: auto;
+  margin-bottom: 10px;
+  border: solid 2px #8f85f9;
+  border-radius: 15px;
+}
+
+.benefit h3 {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+  color: #1a1a1a;
+}
+
+.benefit p {
+  font-size: 1rem;
+  color: #444;
+  margin-bottom: 0.5rem;
+}
+
+.btn-card {
+  padding: 8px;
+  width: 160px;
+  background-color: #8f85f9;
+  color: white;
+  border-radius: 30px;
+  border: none;
+}
+
+/* ==== FOOTER ==== */
+.footer {
+  background: #000;
+  color: #fff;
+  padding: 2rem;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.footer-content p {
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.footer-content ul {
+  list-style: none;
+  display: flex;
+  gap: 1.5rem;
+  padding: 0;
+}
+
+.footer-content ul li a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: color 0.3s ease;
+}
+
+.footer-content ul li a:hover {
+  color: #8f85f9;
+}
+
+/* ==== RESPONSIVE ==== */
+@media (max-width: 1024px) {
+  .benefit {
+    flex: 0 0 50%; /* 2 visibles */
+  }
+}
+@media (max-width: 768px) {
+  .hero {
+    flex-direction: column-reverse;
+    text-align: center;
+    padding: 3rem 1.5rem;
+  }
+
+  .hero-content h1 {
+    font-size: 2rem;
+  }
+
+  .hero-actions {
+    justify-content: center;
+  }
+
+  .benefits {
+    gap: 1.5rem;
+  }
+
+  .benefits-slider {
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .benefit {
+    width: 180px; /* Cards más pequeñas en pantallas medianas */
+  }
+
+  .footer-content ul {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .benefit {
+    flex: 0 0 100%; /* 1 visible */
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-content h1 {
+    font-size: 1.6rem;
+  }
+
+  .hero-content p {
+    font-size: 1rem;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .benefits {
+    padding: 2rem 1rem;
+  }
+
+  .benefits-slider {
+    gap: 0.8rem;
+    padding: 0.5rem;
+  }
+
+  .benefit {
+    width: 160px; /* Cards más compactas en móviles */
+  }
+}

@@ -1,0 +1,130 @@
+/* ==== Overlay (fondo oscuro) ==== */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+/* ==== Caja del modal ==== */
+/* .modal {
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0px 5px 25px rgba(0, 0, 0, 0.3);
+  position: relative;
+  animation: fadeIn 0.3s ease-in-out;
+} */
+
+/* ==== Botón de cerrar (X) ==== */
+.section.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  color: #333;
+  transition: transform 0.2s;
+}
+
+.close-btn:hover {
+  transform: scale(1.2);
+  color: #8f85f9;
+}
+
+/* ==== Sección del formulario ==== */
+.section-registro {
+  background-color: #212529;
+  width: 350px;
+  height: 430px;
+  padding: 20px;
+  border-radius: 30px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.msj-estado {
+  color: white;
+}
+.section-registro h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 1.8rem;
+  color: white;
+}
+
+/* ==== Inputs ==== */
+.section-registro input {
+  width: calc(100% - 10px);
+  margin: 5px;
+  background-color: #495057;
+  padding: 10px;
+  border-radius: 10px;
+  border: solid 1px #41484e;
+  color: white;
+}
+
+.section-registro input:focus {
+  border-color: #4f46e5; /* Azul morado */
+  outline: none;
+  box-shadow: 0 0 6px rgba(79, 70, 229, 0.3);
+}
+
+/* ==== Botón de registro ==== */
+.section-registro form button {
+  width: calc(100% - 10px);
+  margin: 5px;
+  margin-top: 10px;
+  background-color: #40a8f4;
+  color: white;
+  font-size: medium;
+  padding: 10px;
+  border-radius: 30px;
+}
+
+.section-registro form button:hover {
+  background: #4338ca; /* Azul más oscuro */
+}
+
+/* ==== Mensaje de feedback ==== */
+.modal p {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+/* Colores diferenciados */
+.modal p:has(✅) {
+  color: #16a34a; /* Verde éxito */
+}
+
+.modal p:has(❌),
+.modal p:has(⚠️) {
+  color: #dc2626; /* Rojo error */
+}
+
+/* ==== Animación ==== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

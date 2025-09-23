@@ -1,0 +1,311 @@
+.home-container {
+  display: flex;
+  height: 91vh;
+  width: 100%;
+  position: relative;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.sidebar {
+  width: 80px;
+  background-color: #495057;
+  padding: 20px;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sidebar.expandida {
+  width: 200px;
+  transition: width 0.3s ease;
+}
+
+.sidebar.colapsada {
+  width: 60px;
+  transition: width 0.3s ease;
+  align-items: center;
+}
+
+.btn-toggle-sidebar {
+  background-color: #343a40;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  font-size: 18px;
+  align-self: flex-start;
+}
+
+.sidebar-menu button {
+  margin-bottom: 8px;
+  background: none;
+  border: none;
+  color: white;
+  text-align: left;
+  padding: 10px;
+  width: 100%;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.sidebar-menu button:hover {
+  background-color: #6c757d;
+}
+
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 70px;
+}
+
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.sidebar-btn:hover {
+  background-color: #6c757d;
+  border-radius: 6px;
+}
+
+.sidebar-btn .icon {
+  font-size: 24px;
+  width: 32px;
+  text-align: center;
+}
+
+.sidebar-btn .label {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.btn-pedir {
+  margin-top: 16px;
+  width: 100%;
+  padding: 12px 20px;
+  background-color: #28a745; /* verde tipo éxito */
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease;
+}
+
+.btn-pedir:hover,
+.btn-confirmar:hover {
+  background-color: #005fa3;
+}
+
+.viaje-info {
+  margin-top: 2rem;
+  background-color: #f9f9f9;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.map-container {
+  flex: 1;
+  /* height: 100%; */
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+.menu-viaje-flotante {
+  position: absolute;
+  top: 30px;
+  left: 20px;
+  width: 300px;
+  display: flex;
+  flex-direction: column; /* Todo en columna */
+  gap: 12px; /* Espaciado uniforme */
+  background-color: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+.menu-viaje-flotante input::placeholder {
+  font-size: 12px;
+  font-style: inherit; /* Estilo cursiva */
+  letter-spacing: 0.5px; /* Espaciado entre letras */
+  text-align: center;
+  color: #84898f;
+}
+
+.menu-viaje-flotante label {
+  font-weight: bold;
+  margin-top: 12px;
+  display: block;
+}
+
+.menu-viaje-flotante input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  border: none;
+  border-radius: 6px;
+  background-color: #e9ebeb;
+  font-size: 12px;
+  color: #84898f;
+}
+
+.botones-rapidos {
+  width: 100%;
+  height: 35px;
+  /* font-size: 1px; */
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.botones-rapidos button {
+  font-size: 11.5px;
+  font-style: inherit; /* Estilo cursiva */
+  letter-spacing: 0.3px;
+  text-align: center;
+  flex: 1;
+  padding: 1px;
+  background-color: #e9ebeb;
+  color: #84898f;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.botones-rapidos button:hover {
+  background-color: #005fa3;
+  color: white;
+}
+
+.direcciones-guardadas {
+  margin-top: 15px;
+}
+
+.direcciones-guardadas button {
+  display: block;
+  width: 100%;
+  flex-direction: column;
+  margin-top: 8px;
+  font-style: inherit;
+  letter-spacing: 0.3px;
+  text-align: center;
+  flex: 1;
+  padding: 10px;
+  background-color: #e9ebeb;
+  color: #84898f;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.3s ease;
+}
+
+.direcciones-guardadas button:hover {
+  background-color: #005fa3;
+  color: white;
+}
+
+.salmito {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  font-style: inherit;
+  text-align: center;
+  padding: 10px;
+  background-color: #e9ebeb;
+  color: #84898f;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.menu-flotante-aceptar {
+  position: absolute;
+  top: 430px;
+  left: 20px;
+  width: 300px;
+  background-color: #f9f9f9;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+.btn-aceptar {
+  width: 100%;
+  padding: 10px;
+  background-color: #66bafa;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-aceptar:hover {
+  background-color: #005fa3;
+  cursor: pointer;
+}
+
+.btn-cerrar {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  background-color: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-cerrar:hover {
+  background-color: #b02a37;
+}
+/*************************************************************/
+.moto-container {
+  position: relative;
+  width: 100%;
+  height: 150px; /* altura de la animación */
+  overflow: hidden;
+  position: fixed; /* fijo en pantalla */
+  bottom: 0; /* pegada abajo */
+  left: 80px;
+  z-index: 1000; /* encima de otros elementos */
+  /* background: gray; */
+}
+
+.moto {
+  position: absolute;
+  bottom: 0; /* pegada al fondo del contenedor */
+  left: -100px; /* inicia fuera de la pantalla */
+  width: 100px; /* tamaño de la moto */
+  animation: moverMoto 15s linear infinite;
+}
+
+@keyframes moverMoto {
+  0% {
+    left: -100px;
+  }
+  100% {
+    left: 100%; /* termina fuera de la pantalla a la derecha */
+  }
+}
