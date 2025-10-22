@@ -1,50 +1,22 @@
-/* ==== Overlay (fondo oscuro) ==== */
+/* RegisterModal.modules.css */
+
+/* Overlay */
 .overlay {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.6);
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 999;
+  animation: fadeIn 0.25s ease;
 }
 
-/* ==== Caja del modal ==== */
-/* .modal {
-  background: #ffffff;
-  padding: 2rem;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0px 5px 25px rgba(0, 0, 0, 0.3);
-  position: relative;
-  animation: fadeIn 0.3s ease-in-out;
-} */
-
-/* ==== Botón de cerrar (X) ==== */
-.section.close-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  font-weight: bold;
-  cursor: pointer;
-  color: #333;
-  transition: transform 0.2s;
-}
-
-.close-btn:hover {
-  transform: scale(1.2);
-  color: #8f85f9;
-}
-
-/* ==== Sección del formulario ==== */
-.section-registro {
+/* Modal principal */
+.modal {
   background-color: #212529;
   width: 350px;
   height: 430px;
@@ -57,74 +29,181 @@
   text-align: center;
 }
 
-.msj-estado {
-  color: white;
+/* Close button */
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #374151;
+  transition: color 0.2s ease;
 }
-.section-registro h2 {
-  text-align: center;
+
+.close-btn:hover {
+  color: #ef4444;
+}
+
+/* Mensaje de estado */
+/* .msj-estado {
+  background-color: #f0fdfa;
+  color: #065f46;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
   margin-bottom: 1rem;
-  font-size: 1.8rem;
-  color: white;
-}
-
-/* ==== Inputs ==== */
-.section-registro input {
-  width: calc(100% - 10px);
-  margin: 5px;
-  background-color: #495057;
-  padding: 10px;
-  border-radius: 10px;
-  border: solid 1px #41484e;
-  color: white;
-}
-
-.section-registro input:focus {
-  border-color: #4f46e5; /* Azul morado */
-  outline: none;
-  box-shadow: 0 0 6px rgba(79, 70, 229, 0.3);
-}
-
-/* ==== Botón de registro ==== */
-.section-registro form button {
-  width: calc(100% - 10px);
-  margin: 5px;
-  margin-top: 10px;
-  background-color: #40a8f4;
-  color: white;
-  font-size: medium;
-  padding: 10px;
-  border-radius: 30px;
-}
-
-.section-registro form button:hover {
-  background: #4338ca; /* Azul más oscuro */
-}
-
-/* ==== Mensaje de feedback ==== */
-.modal p {
-  margin-top: 1rem;
+  font-weight: 500;
   text-align: center;
-  font-size: 0.95rem;
+} */
+
+/* Sección de selección tipo */
+.tipo-seleccion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
 }
 
-/* Colores diferenciados */
-.modal p:has(✅) {
-  color: #16a34a; /* Verde éxito */
+.tipo-seleccion h2 {
+  font-size: 1.5rem;
+  color: #1e3a8a;
+  margin-bottom: 1rem;
 }
 
-.modal p:has(❌),
-.modal p:has(⚠️) {
-  color: #dc2626; /* Rojo error */
+.tipo-seleccion button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  background-color: #3b82f6;
+  color: white;
+  transition: background-color 0.2s ease, transform 0.15s ease;
 }
 
-/* ==== Animación ==== */
+.tipo-seleccion button:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+}
+
+/* Formulario */
+.form-registro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-registro h2 {
+  text-align: center;
+  color: #1e3a8a;
+  margin-bottom: 1rem;
+}
+
+.form-registro input,
+.form-registro select {
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-registro input:focus,
+.form-registro select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Botones del wizard */
+.btn-next,
+.btn-prev,
+.btn-registrarse {
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 0.5rem;
+}
+
+.btn-next {
+  background-color: #3b82f6;
+  color: #fff;
+}
+
+.btn-next:hover {
+  background-color: #2563eb;
+}
+
+.btn-prev {
+  background-color: #e5e7eb;
+  color: #111827;
+}
+
+.btn-prev:hover {
+  background-color: #d1d5db;
+}
+
+.btn-registrarse {
+  background-color: #10b981;
+  color: white;
+}
+
+.btn-registrarse:hover {
+  background-color: #059669;
+}
+
+/* Wizard buttons container */
+.wizard-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
+/* Animaciones */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: scale(0.9);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Responsivo */
+@media (max-width: 480px) {
+  .modal {
+    padding: 1.5rem;
+    width: 95%;
+  }
+
+  .tipo-seleccion h2,
+  .form-registro h2 {
+    font-size: 1.25rem;
+  }
+
+  .btn-next,
+  .btn-prev,
+  .btn-registrarse {
+    width: 100%;
+  }
+
+  .wizard-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 }

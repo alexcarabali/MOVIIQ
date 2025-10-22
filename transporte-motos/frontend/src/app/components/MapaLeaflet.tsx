@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -14,8 +14,8 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
 type Props = {
-  origen: [number, number];
-  destino: [number, number];
+  origen: [number, number]; // [lat, lng]
+  destino: [number, number]; // [lat, lng]
   setPrecio: (precio: number) => void;
   onClickMapa?: (coords: [number, number]) => void;
 };
@@ -35,30 +35,78 @@ export default function MapaLeaflet({
   setPrecio,
   onClickMapa,
 }: Props) {
+  const [ruta, setRuta] = useState<[number, number][]>([]);
+  const [ubicacionActual, setUbicacionActual] = useState<
+    [number, number] | null
+  >(null);
+
+  // 🔹 Obtener ubicación actual
   useEffect(() => {
-    if (origen && destino) {
-      const distancia = calcularDistancia(origen, destino);
-      const precioEstimado = Math.round(distancia * 2500);
-      setPrecio(precioEstimado);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords: [number, number] = [
+            pos.coords.latitude,
+            pos.coords.longitude,
+          ];
+          setUbicacionActual(coords);
+        },
+        (err) => console.warn("No se pudo obtener ubicación:", err)
+      );
     }
+  }, []);
+
+  // 🔹 Calcular ruta
+  useEffect(() => {
+    if (!origen || !destino) return;
+
+    const obtenerRuta = async () => {
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${origen[1]},${origen[0]};${destino[1]},${destino[0]}?overview=full&geometries=geojson`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.routes && data.routes.length > 0) {
+          const coords: [number, number][] =
+            data.routes[0].geometry.coordinates.map(
+              ([lng, lat]: [number, number]) => [lat, lng]
+            );
+          setRuta(coords);
+
+          // Precio estimado
+          const distanciaKm = data.routes[0].distance / 1000;
+          setPrecio(Math.round(distanciaKm * 2500));
+        }
+      } catch (error) {
+        console.error("Error al obtener la ruta:", error);
+        setRuta([origen, destino]); // fallback línea recta
+      }
+    };
+
+    obtenerRuta();
   }, [origen, destino, setPrecio]);
 
-  // Centro dinámico del mapa al cambiar origen
+  // 🔹 Centrado entre origen y destino solo una vez
   const CenterMap = () => {
     const map = useMap();
+    const [centrado, setCentrado] = useState(false);
+
     useEffect(() => {
-      map.setView([origen[1], origen[0]], map.getZoom(), {
-        animate: true,
-      });
-    }, [origen, map]);
+      if (!centrado) {
+        const bounds = L.latLngBounds([origen, destino]);
+        map.fitBounds(bounds, { padding: [50, 50] });
+        setCentrado(true);
+      }
+    }, [origen, destino, map, centrado]);
+
     return null;
   };
 
-  // Detecta clicks en el mapa para seleccionar destino
+  // 🔹 Click para seleccionar destino
   const ClickHandler = () => {
     useMapEvents({
       click: (e) => {
-        const coords: [number, number] = [e.latlng.lng, e.latlng.lat];
+        const coords: [number, number] = [e.latlng.lat, e.latlng.lng];
         if (onClickMapa) onClickMapa(coords);
       },
     });
@@ -68,65 +116,36 @@ export default function MapaLeaflet({
   return (
     <div className="max-w-4xl mx-auto p-4">
       <MapContainer
-        center={[origen[1], origen[0]]}
+        center={ubicacionActual || origen}
         zoom={14}
         style={{ width: "100%", height: "650px", borderRadius: "8px" }}
-        scrollWheelZoom={true}
-        zoomControl={false}
+        scrollWheelZoom
+        zoomControl
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
 
-        {/* Centro automático en origen */}
         <CenterMap />
 
-        {/* Marcador origen */}
-        <Marker position={[origen[1], origen[0]]}>
+        {/* Marcadores */}
+        <Marker position={origen}>
           <Popup>Origen</Popup>
         </Marker>
-
-        {/* Marcador destino */}
         {destino && (
-          <Marker position={[destino[1], destino[0]]}>
+          <Marker position={destino}>
             <Popup>Destino</Popup>
           </Marker>
         )}
 
-        {/* Línea entre origen y destino */}
-        <Polyline
-          positions={[
-            [origen[1], origen[0]],
-            [destino[1], destino[0]],
-          ]}
-          color="blue"
-        />
+        {/* Ruta */}
+        {ruta.length > 0 && (
+          <Polyline positions={ruta} color="blue" weight={5} />
+        )}
 
-        {/* Click para seleccionar destino */}
         <ClickHandler />
       </MapContainer>
     </div>
   );
-}
-
-// 🔹 Función auxiliar: distancia Haversine en km
-function calcularDistancia(
-  origen: [number, number],
-  destino: [number, number]
-): number {
-  const R = 6371;
-  const dLat = deg2rad(destino[1] - origen[1]);
-  const dLon = deg2rad(destino[0] - origen[0]);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(deg2rad(origen[1])) *
-      Math.cos(deg2rad(destino[1])) *
-      Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function deg2rad(deg: number): number {
-  return deg * (Math.PI / 180);
 }

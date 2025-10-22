@@ -32,11 +32,15 @@ export default function LoginModal({
 
       const data = await res.json();
       if (data.success) {
-        login(data.user); // guardamos al usuario en contexto
+        login(data.user);
         setMensaje("✅ Bienvenid@ " + data.user.nombre);
+
         setTimeout(() => {
-          router.push("/homeUsuario"); // <-- cambia "dashboard" por la ruta que quieras
-          onClose(); // cierra modal
+          if (data.tipo === "admin") router.push("/homeAdmin");
+          else if (data.tipo === "conductor") router.push("/homeConductor");
+          else router.push("/homeUsuario");
+
+          onClose();
         }, 1000);
       } else {
         setMensaje("❌ " + data.message);

@@ -19,7 +19,7 @@ body {
 
 /* ==== NAV GENERAL ==== */
 .site-header {
-  background: #000;
+  background: #0a0f18;
   color: #fff;
   padding: 0.5rem 2rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
@@ -144,12 +144,14 @@ body {
 
 .btn.iniciar:hover {
   color: #8f85f9;
+  cursor: pointer;
 }
 
 .btn.registrarse {
   background: transparent;
   border: none;
   color: #fff;
+  cursor: pointer;
 }
 
 .btn.registrarse:hover {
@@ -288,6 +290,10 @@ body {
   display: flex;
   opacity: 1;
   transform: translateY(0);
+}
+
+* {
+  transition: all 0.25s ease-in-out;
 }
 
 /* Animación de despliegue */

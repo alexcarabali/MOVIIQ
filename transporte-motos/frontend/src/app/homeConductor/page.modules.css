@@ -117,26 +117,6 @@
   text-align: center;
 }
 
-.btn-pedir {
-  margin-top: 16px;
-  width: 100%;
-  padding: 12px 20px;
-  background-color: #22c55e; /* Verde éxito más suave */
-  color: #fff;
-  border: none;
-  border-radius: 50px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
-  transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
-.btn-pedir:hover {
-  background-color: #16a34a;
-  transform: scale(1.02);
-}
-
 /* ============================================================
    CONTENEDOR PRINCIPAL Y MAPA - MODO OSCURO
 ============================================================ */
@@ -163,193 +143,190 @@
 }
 
 /* ============================================================
-   MENÚ FLOTANTE - VIAJE
+   CONTENEDOR PRINCIPAL
 ============================================================ */
-.menu-viaje-flotante {
-  position: absolute;
-  top: 15%;
-  left: 3%;
-  transform: translateY(-10%);
-  width: 320px;
+.container-general {
+  flex: 1;
+  padding: 30px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  background-color: #1e293b;
-  padding: 20px;
-  border-radius: 16px;
-  border: 1px solid #334155;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-  z-index: 10;
+  align-items: center;
+  background-color: #0f172a;
+  color: #f1f5f9;
+  overflow-y: auto;
   transition: all 0.3s ease;
 }
 
-.menu-viaje-flotante label {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: #cbd5e1;
-  margin-top: 8px;
-}
-
-.menu-viaje-flotante input {
-  width: 100%;
-  padding: 9px;
-  margin-top: 6px;
-  border: none;
-  border-radius: 6px;
-  background-color: #334155;
-  font-size: 13px;
-  color: #e2e8f0;
-  transition: all 0.3s ease;
-}
-
-.menu-viaje-flotante input:focus {
-  outline: 2px solid #3b82f6;
-  background-color: #475569;
-}
-
-.menu-viaje-flotante input::placeholder {
-  color: #94a3b8;
+.titulo-conductor {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #38bdf8;
   text-align: center;
-  font-size: 12.5px;
-}
-
-/* ---- BOTONES RÁPIDOS ---- */
-.botones-rapidos {
-  display: flex;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.botones-rapidos button {
-  flex: 1;
-  padding: 6px 0;
-  font-size: 12px;
-  font-weight: 500;
-  background-color: #334155;
-  color: #cbd5e1;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-
-.botones-rapidos button:hover {
-  background-color: #2563eb;
-  color: #fff;
-}
-
-/* ---- DIRECCIONES GUARDADAS ---- */
-.direcciones-guardadas {
-  margin-top: 15px;
-}
-
-.direcciones-guardadas button {
-  width: 100%;
-  padding: 10px;
-  margin-top: 8px;
-  background-color: #334155;
-  color: #cbd5e1;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-
-.direcciones-guardadas button:hover {
-  background-color: #2563eb;
-  color: white;
-}
-
-.salmito {
-  width: 100%;
-  margin-top: 8px;
-  text-align: center;
-  padding: 10px;
-  background-color: #334155;
-  color: #94a3b8;
-  border-radius: 6px;
-  font-size: 12px;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
 }
 
 /* ============================================================
-   MENÚ FLOTANTE DE ACEPTAR VIAJE
+   ESTADO DE CONEXIÓN
 ============================================================ */
-.menu-flotante-aceptar {
-  position: absolute;
-  top: 430px;
-  left: 3%;
-  width: 320px;
-  background-color: #1e293b;
-  padding: 20px;
-  border-radius: 16px;
+.estado-conexion {
+  margin-bottom: 20px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+  background-color: rgba(30, 41, 59, 0.8);
   border: 1px solid #334155;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.text-green-600 {
+  color: #22c55e;
+}
+
+.text-red-500 {
+  color: #ef4444;
+}
+
+/* ============================================================
+   TARJETA DATOS DEL CONDUCTOR
+============================================================ */
+.card-datos {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 20px 24px;
+  width: 100%;
+  max-width: 500px;
+  margin-bottom: 28px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.card-datos:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+.card-datos p {
+  margin: 8px 0;
+  font-size: 1rem;
+}
+
+.card-datos strong {
+  color: #38bdf8;
+}
+
+.btn-estado {
+  background-color: #3b82f6;
+  margin-top: 14px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: background-color 0.25s ease, transform 0.2s ease;
+}
+
+.btn-estado:hover {
+  transform: scale(1.03);
+}
+
+/* ============================================================
+   MAPA
+============================================================ */
+.mapa-container {
+  width: 90%;
+  height: 70vh;
+  background-color: #1e293b;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  border: 1px solid #334155;
   transition: all 0.3s ease;
 }
 
-.btn-aceptar,
-.btn-cerrar {
+.mapa-leaflet {
   width: 100%;
-  padding: 10px;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.25s ease;
+  height: 100%;
 }
 
+/* ============================================================
+   BOTÓN ACEPTAR VIAJE EN POPUP
+============================================================ */
 .btn-aceptar {
+  margin-top: 6px;
+  padding: 6px 12px;
   background-color: #3b82f6;
   color: #fff;
-  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.25s ease, transform 0.2s ease;
 }
 
 .btn-aceptar:hover {
-  background-color: #1d4ed8;
-  transform: scale(1.02);
-}
-
-.btn-cerrar {
-  background-color: #ef4444;
-  color: #fff;
-}
-
-.btn-cerrar:hover {
-  background-color: #b91c1c;
-  transform: scale(1.02);
+  background-color: #2563eb;
+  transform: scale(1.05);
 }
 
 /* ============================================================
-   ANIMACIÓN MOTO
+   TEXTO DE CARGA UBICACIÓN
 ============================================================ */
-.moto-container {
-  position: fixed;
-  bottom: 0;
-  left: 80px;
-  width: 100%;
-  height: 150px;
-  overflow: hidden;
-  z-index: 1000;
+.text-gray-500 {
+  color: #9ca3af;
 }
 
-.moto {
-  position: absolute;
-  bottom: 0;
-  left: -100px;
-  width: 100px;
-  animation: moverMoto 15s linear infinite;
+.text-center {
+  text-align: center;
+  font-size: 1rem;
+  padding: 20px;
+  background-color: rgba(30, 41, 59, 0.5);
+  border-radius: 10px;
 }
 
-@keyframes moverMoto {
-  0% {
-    left: -100px;
+/* ============================================================
+   RESPONSIVE DESIGN
+============================================================ */
+@media (max-width: 1024px) {
+  .container-general {
+    padding: 20px;
   }
-  100% {
-    left: 100%;
+
+  .card-datos {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .mapa-container {
+    width: 95%;
+    height: 60vh;
+  }
+}
+
+@media (max-width: 640px) {
+  .titulo-conductor {
+    font-size: 1.5rem;
+  }
+
+  .card-datos {
+    padding: 16px;
+    font-size: 0.9rem;
+  }
+
+  .btn-estado {
+    font-size: 0.85rem;
+  }
+
+  .mapa-container {
+    height: 55vh;
   }
 }
 

@@ -1,86 +1,217 @@
-/* page.modules.css */
+.dark-theme {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
 
-/* Contenedor principal */
-.home-container {
+.container-confirmar {
+  display: flex;
+  justify-content: space-between;
+  height: 90vh;
+  padding: 20px;
+  gap: 20px;
+}
+
+.mapa-confirmar-container {
+  flex: 2;
+  background-color: #1e293b;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.panel-viaje {
+  flex: 1;
+  background-color: #1e293b;
+  border-radius: 12px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+}
+
+/* ===================== Lista de conductores ===================== */
+.lista-conductores {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.card-conductor {
+  display: flex;
   align-items: center;
-  padding: 20px;
-  font-family: Arial, sans-serif;
-  background-color: #f5f5f5;
-}
-
-/* Título de la página */
-.titulo-confirmar {
-  font-size: 1.8rem;
-  font-weight: bold;
-  margin-bottom: 20px;
-  color: #333;
-}
-
-/* Contenedor del mapa más pequeño */
-.mapa-confirmar-container {
-  width: 100%;
-  max-width: 500px; /* Ajusta al tamaño deseado */
-  height: 300px; /* Más pequeño que la página principal */
-  margin-bottom: 20px;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-/* Detalles del viaje */
-.detalles-viaje {
-  width: 100%;
-  max-width: 500px;
-  background-color: #fff;
-  padding: 15px 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-}
-
-.detalles-viaje p {
-  font-size: 1rem;
-  margin: 6px 0;
-  color: #444;
-}
-
-.detalles-viaje strong {
-  color: #000;
-}
-
-/* Botón confirmar viaje */
-.btn-confirmar-viaje {
-  width: 100%;
+  gap: 12px;
   padding: 12px;
-  background-color: #4f46e5; /* azul/ morado */
-  color: #fff;
-  font-size: 1rem;
-  font-weight: bold;
+  background-color: #334155;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-conductor:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.card-conductor.seleccionado {
+  border: 2px solid #3b82f6;
+  background-color: #1e293b;
+}
+
+.info-conductor {
+  display: flex;
+  flex-direction: column;
+}
+
+.foto-conductor {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Vehículo y estado */
+.vehiculo {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+
+.telefono {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.estado-verificacion {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  width: fit-content;
+  text-transform: capitalize;
+}
+
+.estado-verificacion.pendiente {
+  background-color: #facc15;
+  color: #1e293b;
+}
+
+.estado-verificacion.aprobado {
+  background-color: #22c55e;
+  color: #ffffff;
+}
+
+.estado-verificacion.rechazado {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+/* ===================== Información de la ruta ===================== */
+.info-ruta p {
+  margin: 6px 0;
+  font-size: 0.95rem;
+}
+
+/* ===================== Botones ===================== */
+.acciones-viaje {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-confirmar,
+.btn-cancelar {
+  flex: 1;
+  padding: 10px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-  margin-top: 15px;
+  font-weight: 600;
+  transition: background 0.3s ease, transform 0.2s ease;
 }
 
-.btn-confirmar-viaje:hover {
-  background-color: #3730a3;
+.btn-confirmar {
+  background-color: #3b82f6;
+  color: white;
 }
 
-/* Responsividad */
-@media screen and (max-width: 600px) {
-  .mapa-confirmar-container,
-  .detalles-viaje {
-    max-width: 90%;
+.btn-confirmar:hover {
+  background-color: #2563eb;
+  transform: scale(1.03);
+}
+
+.btn-cancelar {
+  background-color: #ef4444;
+  color: white;
+}
+
+.btn-cancelar:hover {
+  background-color: #b91c1c;
+  transform: scale(1.03);
+}
+
+/* ===================== Loader ===================== */
+.panel-busqueda {
+  text-align: center;
+  margin-top: 40%;
+}
+
+.loader {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #3b82f6;
+  border-top-color: transparent;
+  border-radius: 50%;
+  margin: 0 auto 10px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 1024px) {
+  .container-confirmar {
+    flex-direction: column;
+    height: auto;
   }
 
-  .titulo-confirmar {
-    font-size: 1.5rem;
+  .mapa-confirmar-container {
+    flex: none;
+    height: 50vh;
   }
 
-  .btn-confirmar-viaje {
+  .panel-viaje {
+    flex: none;
+    width: 100%;
+    margin-top: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .card-conductor {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .foto-conductor {
+    width: 50px;
+    height: 50px;
+  }
+
+  .info-conductor h4 {
     font-size: 0.95rem;
+  }
+
+  .vehiculo,
+  .telefono,
+  .estado-verificacion {
+    font-size: 0.8rem;
+  }
+
+  .acciones-viaje {
+    flex-direction: column;
   }
 }

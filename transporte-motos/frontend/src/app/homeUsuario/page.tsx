@@ -4,30 +4,48 @@ import { useState } from "react";
 import MapaLeaflet from "../components/MapaLeaflet";
 import "./page.modules.css";
 import { useRouter } from "next/navigation";
+import {
+  Home,
+  Star,
+  Settings,
+  Phone,
+  Lock,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 export default function PageMapa() {
-  const [origen, setOrigen] = useState<[number, number]>([-76.532, 3.4516]);
-  const [destino, setDestino] = useState<[number, number]>([-76.52, 3.41]);
+  // 🔹 Coordenadas iniciales [lat, lng]
+  const [origen, setOrigen] = useState<[number, number]>([3.4516, -76.532]);
+  const [destino, setDestino] = useState<[number, number]>([3.41, -76.52]);
   const [direccionOrigen, setDireccionOrigen] = useState<string>("");
   const [direccionDestino, setDireccionDestino] = useState<string>("");
   const [precio, setPrecio] = useState<number | null>(null);
-  const [mostrarDetalles, setMostrarDetalles] = useState(false);
-  const [mostrarSidebar, setMostrarSidebar] = useState(true);
+  const [mostrarSidebar, setMostrarSidebar] = useState(false);
+
   const router = useRouter();
-  // Obtener ubicación actual y dirección
+
+  const menuItems = [
+    { icon: <Home size={22} />, label: "Inicio" },
+    { icon: <Star size={22} />, label: "Favoritos" },
+    { icon: <Settings size={22} />, label: "Configuración" },
+    { icon: <Phone size={22} />, label: "Contacto" },
+    { icon: <Lock size={22} />, label: "Cerrar sesión" },
+  ];
+
+  // 📍 Obtener ubicación actual
   const obtenerUbicacionActual = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const coords: [number, number] = [
-          pos.coords.longitude,
           pos.coords.latitude,
-        ];
+          pos.coords.longitude,
+        ]; // [lat,lng]
         setOrigen(coords);
 
-        // Reverse geocoding
         try {
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${coords[1]}&lon=${coords[0]}&format=json`
+            `https://nominatim.openstreetmap.org/reverse?lat=${coords[0]}&lon=${coords[1]}&format=json`
           );
           const data = await res.json();
           setDireccionOrigen(data.display_name || "");
@@ -38,58 +56,86 @@ export default function PageMapa() {
     }
   };
 
-  // Cuando se pide viaje
+  // 🚗 Pedir viaje
   const handlePedirViaje = (e: React.FormEvent) => {
     e.preventDefault();
     alert("¡Buscando conductor disponible...");
   };
 
-  const handleAceptar = () => {
-    // Aquí puedes pasar datos por query o state
-    router.push("./confirmarRuta"); // <-- Cambia por la ruta que necesites
+  // 💾 Registrar viaje y redirigir
+  const handleAceptar = async () => {
+    const nuevoViaje = {
+      id_pasajero: 1, // 🔹 Cambia por el id del usuario logueado
+      id_conductor: null,
+      id_vehiculo: null,
+      origen_lat: origen[0],
+      origen_lng: origen[1],
+      destino_lat: destino[0],
+      destino_lng: destino[1],
+      precio: precio ?? 0,
+    };
+
+    try {
+      const res = await fetch("http://localhost:4000/api/viajes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nuevoViaje),
+      });
+
+      const data = await res.json();
+      console.log("✅ Viaje registrado:", data);
+
+      // Redirigir a ConfirmarRuta
+      const query = new URLSearchParams({
+        origenLat: origen[0].toString(),
+        origenLng: origen[1].toString(),
+        destinoLat: destino[0].toString(),
+        destinoLng: destino[1].toString(),
+        precio: (precio ?? 0).toString(),
+      });
+
+      router.push(`/confirmarRuta?${query.toString()}`);
+    } catch (error) {
+      console.error("❌ Error al registrar el viaje:", error);
+      alert("Hubo un problema al guardar el viaje. Intenta de nuevo.");
+    }
   };
 
   return (
     <div className="home-container">
+      {/* ================= SIDEBAR ================= */}
       <aside className={`sidebar ${mostrarSidebar ? "visible" : "oculta"}`}>
-        <button
-          className="btn-toggle-sidebar"
-          onClick={() => setMostrarSidebar(!mostrarSidebar)}
-        >
-          {mostrarSidebar ? "⮜" : "⮞"}
-        </button>
+        <div className="sidebar-header">
+          <h1 className={`sidebar-title ${!mostrarSidebar ? "hidden" : ""}`}>
+            Moviiq
+          </h1>
+          <button
+            onClick={() => setMostrarSidebar(!mostrarSidebar)}
+            className="btn-toggle"
+          >
+            {mostrarSidebar ? <ChevronLeft /> : <ChevronRight />}
+          </button>
+        </div>
 
-        {mostrarSidebar && (
-          <nav className="sidebar-menu">
-            <button>🏍️ </button>
-            <button>⭐ </button>
-            <button>⚙️ </button>
-            <button>📞 </button>
-            <button>🔒 </button>
-          </nav>
-        )}
+        <nav className="sidebar-menu">
+          {menuItems.map((item, idx) => (
+            <button key={idx} className="sidebar-btn">
+              {item.icon}
+              <span className={`${!mostrarSidebar ? "hidden" : ""}`}>
+                {item.label}
+              </span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          {mostrarSidebar && <p>© 2025 Moviiq</p>}
+        </div>
       </aside>
 
-      <div className="map-container">
-        <MapaLeaflet
-          origen={origen}
-          destino={destino}
-          setPrecio={setPrecio}
-          onClickMapa={async (coords) => {
-            setDestino(coords);
-            try {
-              const res = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?lat=${coords[1]}&lon=${coords[0]}&format=json`
-              );
-              const data = await res.json();
-              setDireccionDestino(data.display_name || "");
-            } catch {
-              setDireccionDestino("");
-            }
-          }}
-        />
-
-        {/* Menú flotante sobre el mapa */}
+      {/* ================= CONTENIDO PRINCIPAL ================= */}
+      <div className="container-general">
+        {/* Menú flotante */}
         <div className="menu-viaje-flotante">
           <form onSubmit={handlePedirViaje}>
             <input
@@ -108,13 +154,13 @@ export default function PageMapa() {
 
             {/* Botones rápidos */}
             <div className="botones-rapidos">
-              <button type="button" onClick={() => setOrigen([-76.53, 3.45])}>
+              <button type="button" onClick={() => setOrigen([3.45, -76.53])}>
                 🏠 Casa
               </button>
-              <button type="button" onClick={() => setOrigen([-76.54, 3.46])}>
+              <button type="button" onClick={() => setOrigen([3.46, -76.54])}>
                 🏢 Oficina
               </button>
-              <button type="button" onClick={() => setOrigen([-76.55, 3.47])}>
+              <button type="button" onClick={() => setOrigen([3.47, -76.55])}>
                 ⭐ Favoritos
               </button>
             </div>
@@ -133,39 +179,42 @@ export default function PageMapa() {
               >
                 Dirección dos
               </button>
-              <button
-                className="btn-dir-1"
-                onClick={() => alert("Dirección confirmada")}
-              >
-                Dirección tres
-              </button>
             </div>
 
             {/* Salmo */}
             <div className="salmito">
               <p>
                 El que habita al abrigo del Altísimo Morará bajo la sombra del
-                Omnipotente. 2 Diré yo a Jehová: Esperanza mía, y castillo mío;
-                Mi Dios, en quien confiaré. 3 Él te librará del lazo del
-                cazador, De la peste destructora.
+                Omnipotente. Diré yo a Jehová: Esperanza mía, y castillo mío; mi
+                Dios, en quien confiaré. Él te librará del lazo del cazador, de
+                la peste destructora.
               </p>
             </div>
           </form>
-        </div>
 
-        <div className="menu-flotante-aceptar">
-          <button
-            className="btn-aceptar"
-            // onClick={() => setMostrarDetalles(true)}
-            onClick={handleAceptar}
-          >
+          <button className="btn-aceptar" onClick={handleAceptar}>
             Aceptar
           </button>
         </div>
-      </div>
 
-      <div className="moto-container">
-        <img src="/moticoRun.png" alt="Moto" className="moto" />
+        {/* ================= MAPA ================= */}
+        <div className="map-container">
+          <MapaLeaflet
+            origen={origen}
+            destino={destino}
+            setPrecio={setPrecio}
+            onClickMapa={(coords) => {
+              // coords ya vienen como [lat,lng]
+              setDestino(coords);
+              fetch(
+                `https://nominatim.openstreetmap.org/reverse?lat=${coords[0]}&lon=${coords[1]}&format=json`
+              )
+                .then((res) => res.json())
+                .then((data) => setDireccionDestino(data.display_name || ""))
+                .catch(() => setDireccionDestino(""));
+            }}
+          />
+        </div>
       </div>
     </div>
   );

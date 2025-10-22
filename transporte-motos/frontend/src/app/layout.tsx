@@ -71,10 +71,10 @@ function Header({
             </>
           ) : (
             <>
-              <button className="btn cerrar" onClick={logout}>
+              <button className="btn cerrar" onClick={() => logout("/")}>
                 Cerrar sesión
               </button>
-              <Link className="btn perfil" href="/">
+              <Link className="btn perfil" href="/perfil">
                 Mi perfil
               </Link>
             </>
@@ -142,11 +142,25 @@ export default function RootLayout({
             registerOpen={registerOpen}
             setRegisterOpen={setRegisterOpen}
           />
-          <main /*className="p-6"*/>{children}</main>
-          <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
+          <main>{children}</main>
+
+          {/* LoginModal ahora usa login para cerrar modal y redirigir */}
+          <LoginModal
+            isOpen={loginOpen}
+            onClose={() => setLoginOpen(false)}
+            onLoginSuccess={(redirect?: string) => {
+              setLoginOpen(false);
+              useAuth().login(redirect);
+            }}
+          />
+
           <RegisterModal
             isOpen={registerOpen}
             onClose={() => setRegisterOpen(false)}
+            onRegisterSuccess={(redirect?: string) => {
+              setRegisterOpen(false);
+              useAuth().login(redirect);
+            }}
           />
         </AuthProvider>
       </body>
