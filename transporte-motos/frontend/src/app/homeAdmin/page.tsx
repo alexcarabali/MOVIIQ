@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Plus,
 } from "lucide-react";
+import { API_URL } from "../utils/api";
 
 type TableName =
   | "administradores"
@@ -52,7 +53,7 @@ export default function HomeAdmin() {
 
   const fetchDatos = async () => {
     try {
-      const res = await fetch(`http://localhost:4000/api/${tabla}`);
+      const res = await fetch(`${API_URL}/api/generico/${tabla}`);
       const data = await res.json();
       setDatos(data);
 
@@ -79,8 +80,8 @@ export default function HomeAdmin() {
     e.preventDefault();
     try {
       const endpoint = editing
-        ? `http://localhost:4000/api/${tabla}/${getRowId(editing)}`
-        : `http://localhost:4000/api/${tabla}`;
+        ? `${API_URL}/api/generico/${tabla}/${getRowId(editing)}`
+        : `${API_URL}/api/generico/${tabla}`;
       const method = editing ? "PUT" : "POST";
 
       const res = await fetch(endpoint, {
@@ -116,7 +117,7 @@ export default function HomeAdmin() {
 
     try {
       const res = await fetch(
-        `http://localhost:4000/api/${tabla}/${getRowId(row)}`,
+        `${API_URL}/api/generico/${tabla}/${getRowId(row)}`,
         { method: "DELETE" }
       );
       const data = await res.json();

@@ -6,6 +6,7 @@ import { User } from "lucide-react";
 import { useAuth } from "../context/AuthContext"; // ajusta la ruta si es necesario
 import { useRouter } from "next/navigation";
 import socket from "../utils/socket"; // opcional: registra conductor en sockets al loguear
+import { API_URL } from "../utils/api";
 
 export default function LoginModal({
   isOpen,
@@ -26,7 +27,7 @@ export default function LoginModal({
     e.preventDefault();
     setMensaje("⏳ Iniciando sesión...");
     try {
-      const res = await fetch("http://localhost:4000/login", {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

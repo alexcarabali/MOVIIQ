@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import "./page.modules.css";
 import dynamic from "next/dynamic";
 import socket from "../utils/socket"; // ⬅⬅⬅ IMPORTANTE: socket.io cliente
+import { API_URL } from "../utils/api";
 
 export default function ConfirmarRutaPage() {
   const router = useRouter();
@@ -90,7 +91,7 @@ export default function ConfirmarRutaPage() {
     const cargarConductores = async () => {
       setLoadingConductores(true);
       try {
-        const res = await fetch("http://localhost:4000/api/conductores");
+        const res = await fetch(`${API_URL}/api/conductores/aprobados`);
         const data = await res.json();
         setConductores(Array.isArray(data) ? data : []);
         setEstado("confirmando");
