@@ -352,169 +352,51 @@ const io = new Server(server, {
   },
 });
 
-// Mapas para almacenar sockets conectados (separados por rol)
-const usuariosConectados = new Map(); // key = id_usuario -> socket.id (pasajeros)
-const conductoresConectados = new Map(); // key = id_conductor -> socket.id (conductores)
-
-// Timers de espera por respuesta del conductor: id_viaje -> timeoutId
-const pendingResponseTimers = new Map();
-
-// Tiempo máximo que esperamos la respuesta del conductor (ms)
-const DRIVER_RESPONSE_TIMEOUT_MS = 30 * 1000; // 30 segundos (ajustable)
+// Mapa para almacenar usuarios conectados
+// clave = string(id_usuario) -> socket.id
+const usuariosConectados = new Map();
 
 io.on("connection", (socket) => {
-  console.log("🟢 Cliente conectado:", socket.id);
+  console.log("🟢 Usuario conectado:", socket.id);
 
-  // Registrar el cliente (puede ser pasajero o conductor)
-  // Se espera payload: { id: 123, rol: 'conductor' } o 'usuario' o simplemente id
+  // Registrar el usuario (conductor)
+  // Aceptamos que el cliente envíe: idUsuario (number|string) o { id, rol }
   socket.on("registrar_usuario", (payload) => {
     try {
-      if (!payload && payload !== 0) return;
-      let id = null;
-      let rol = null;
-
+      if (!payload) return;
+      let idUsuario = payload;
       if (typeof payload === "object") {
-        id = payload.id ?? payload.id_conductor ?? payload.id_usuario ?? null;
-        rol = payload.rol ?? payload.role ?? null;
-      } else {
-        // si solo envían un id asumimos pasajero (o conductor según convención)
-        id = payload;
+        // puede venir { id, rol } o { id_conductor }
+        idUsuario = payload.id ?? payload.id_conductor ?? payload.idUsuario;
       }
-
-      if (id == null) return;
-
-      const key = String(id);
-
-      if (rol === "conductor" || rol === "driver") {
-        conductoresConectados.set(key, socket.id);
-        console.log(`✅ Conductor ${key} registrado con socket ${socket.id}`);
-      } else if (rol === "usuario" || rol === "pasajero" || rol === "user") {
-        usuariosConectados.set(key, socket.id);
-        console.log(
-          `✅ Usuario/pasajero ${key} registrado con socket ${socket.id}`
-        );
-      } else {
-        // Si no indican rol, intentamos inferir por prefijo o por ya existentes
-        // Por seguridad los guardamos en ambos mapas no — preferimos advertir.
-        usuariosConectados.set(key, socket.id);
-        console.log(
-          `✅ Cliente ${key} (rol no especificado) registrado como usuario/pasajero con socket ${socket.id}`
-        );
-      }
+      if (!idUsuario && idUsuario !== 0) return;
+      const key = String(idUsuario);
+      usuariosConectados.set(key, socket.id);
+      console.log(`✅ Conductor ${key} registrado con socket ${socket.id}`);
     } catch (err) {
       console.warn("Error procesando registrar_usuario:", err);
     }
   });
 
-  // Conductor responde a la solicitud de viaje (aceptar/rechazar)
-  // payload: { id_viaje, id_conductor, aceptado: true|false }
-  socket.on("respuesta_viaje", async (payload) => {
-    try {
-      if (!payload || payload.id_viaje == null) return;
-      const { id_viaje, id_conductor, aceptado } = payload;
-
-      console.log(
-        `📩 Respuesta received from conductor ${id_conductor} for viaje ${id_viaje}: aceptado=${aceptado}`
-      );
-
-      // Cancelar el timeout si hay
-      const timer = pendingResponseTimers.get(String(id_viaje));
-      if (timer) {
-        clearTimeout(timer);
-        pendingResponseTimers.delete(String(id_viaje));
-      }
-
-      // Actualizar DB según la respuesta
-      if (aceptado) {
-        try {
-          await pool.query(
-            `UPDATE viajes SET id_conductor = ?, estado = 'aceptado' WHERE id_viaje = ?`,
-            [id_conductor, id_viaje]
-          );
-        } catch (err) {
-          console.error("Error actualizando viaje a aceptado:", err);
-        }
-      } else {
-        try {
-          await pool.query(
-            `UPDATE viajes SET estado = 'rechazado' WHERE id_viaje = ?`,
-            [id_viaje]
-          );
-        } catch (err) {
-          console.error("Error actualizando viaje a rechazado:", err);
-        }
-      }
-
-      // Notificar al pasajero (si está conectado)
-      // Primero obtenemos el pasajero desde la tabla viajes (si no vino en payload)
-      let id_pasajero = payload.id_pasajero;
-      if (!id_pasajero) {
-        try {
-          const [rows] = await pool.query(
-            `SELECT id_pasajero FROM viajes WHERE id_viaje = ?`,
-            [id_viaje]
-          );
-          if (rows.length > 0) id_pasajero = rows[0].id_pasajero;
-        } catch (err) {
-          console.error("Error obteniendo pasajero para notificar:", err);
-        }
-      }
-
-      if (id_pasajero != null) {
-        const userSocketId = usuariosConectados.get(String(id_pasajero));
-        if (userSocketId) {
-          io.to(userSocketId).emit("viaje_respuesta", {
-            id_viaje,
-            id_conductor,
-            aceptado,
-          });
-          console.log(
-            `🔔 Notificación enviada al pasajero ${id_pasajero} (socket ${userSocketId}) -> aceptado=${aceptado}`
-          );
-        } else {
-          console.log(
-            `⚠️ Pasajero ${id_pasajero} no conectado; no se pudo notificar en tiempo real.`
-          );
-        }
-      } else {
-        console.log("⚠️ No se encontró id_pasajero para el viaje", id_viaje);
-      }
-    } catch (err) {
-      console.error("Error manejando respuesta_viaje:", err);
-    }
-  });
-
-  // Opcional: conductor acepta viaje vía evento diferente
-  socket.on("conductor_acepta_viaje", async ({ id_viaje, id_conductor }) => {
-    console.log(
-      `✅ Conductor ${id_conductor} aceptó viaje ${id_viaje} (evento conductor_acepta_viaje)`
-    );
-    // Reutilizar la lógica de respuesta_viaje
-    socket.emit("respuesta_viaje", { id_viaje, id_conductor, aceptado: true });
-  });
-
+  // Eliminar usuario al desconectarse
   socket.on("disconnect", () => {
-    // Limpiar mapas
     for (const [id, sId] of usuariosConectados.entries()) {
       if (sId === socket.id) {
         usuariosConectados.delete(id);
-        console.log(`🔴 Usuario/pasajero ${id} desconectado`);
-        break;
-      }
-    }
-    for (const [id, sId] of conductoresConectados.entries()) {
-      if (sId === socket.id) {
-        conductoresConectados.delete(id);
-        console.log(`🔴 Conductor ${id} desconectado`);
+        console.log(`🔴 Usuario ${id} desconectado`);
         break;
       }
     }
   });
+
+  // Opcional: conductor acepta viaje (si lo usas)
+  socket.on("conductor_acepta_viaje", ({ id_viaje, id_conductor }) => {
+    console.log(`✅ Conductor ${id_conductor} aceptó viaje ${id_viaje}`);
+    // Podrías actualizar DB aquí o emitir al pasajero, etc.
+  });
 });
 
-// ------------------ END SOCKET SETUP ------------------
-
-// 📩 Endpoint para notificar al conductor cuando se confirma un viaje (sin crear viaje)
+// 📩 Endpoint para notificar al conductor cuando se confirma un viaje
 app.post("/api/notificar-conductor", (req, res) => {
   const { id_conductor, viaje } = req.body;
 
@@ -523,7 +405,7 @@ app.post("/api/notificar-conductor", (req, res) => {
   }
 
   const key = String(id_conductor);
-  const socketId = conductoresConectados.get(key);
+  const socketId = usuariosConectados.get(key);
 
   if (socketId) {
     io.to(socketId).emit("viaje_asignado", viaje);
@@ -537,7 +419,7 @@ app.post("/api/notificar-conductor", (req, res) => {
   }
 });
 
-// ================== ACEPTAR VIAJE (API directa) ==================
+// ================== ACEPTAR VIAJE ==================
 app.post("/api/aceptarViaje", async (req, res) => {
   const { id_viaje, id_conductor } = req.body;
   try {
@@ -554,39 +436,45 @@ app.post("/api/aceptarViaje", async (req, res) => {
 
 // ---- Crear viaje (LA VERSIÓN CORREGIDA) ----
 app.post("/api/viajes", async (req, res) => {
+  const {
+    id_pasajero,
+    id_conductor,
+    id_vehiculo,
+    origen_lat,
+    origen_lng,
+    destino_lat,
+    destino_lng,
+    precio,
+    distancia_km,
+    duracion_minutos,
+    metodo_pago,
+  } = req.body;
+
+  // VALIDACIÓN CORREGIDA (usamos == null para solo bloquear null/undefined)
+  if (
+    id_pasajero == null ||
+    id_conductor == null ||
+    origen_lat == null ||
+    origen_lng == null ||
+    destino_lat == null ||
+    destino_lng == null ||
+    precio == null
+  ) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Faltan campos requeridos" });
+  }
+
   try {
-    const {
-      id_pasajero,
-      id_conductor,
-      origen_lat,
-      origen_lng,
-      destino_lat,
-      destino_lng,
-      precio,
-      distancia_km,
-      duracion_minutos,
-      metodo_pago,
-    } = req.body;
-
-    // Validación: usamos == null para atrapar null/undefined únicamente
-    if (
-      id_pasajero == null ||
-      id_conductor == null ||
-      origen_lat == null ||
-      origen_lng == null ||
-      destino_lat == null ||
-      destino_lng == null ||
-      precio == null
-    ) {
-      return res.status(400).json({
-        message: "Faltan datos obligatorios para crear el viaje",
-      });
-    }
-
-    const sql = `
-      INSERT INTO viajes (
+    const [result] = await pool.query(
+      `INSERT INTO viajes (
+        id_pasajero, id_conductor, id_vehiculo, origen_lat, origen_lng, destino_lat, destino_lng,
+        precio, distancia_km, duracion_minutos, metodo_pago
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
         id_pasajero,
         id_conductor,
+        id_vehiculo || null,
         origen_lat,
         origen_lng,
         destino_lat,
@@ -594,238 +482,46 @@ app.post("/api/viajes", async (req, res) => {
         precio,
         distancia_km,
         duracion_minutos,
-        metodo_pago,
-        estado
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente')
-    `;
+        metodo_pago || "efectivo",
+      ]
+    );
 
-    const values = [
-      id_pasajero,
-      id_conductor,
-      origen_lat,
-      origen_lng,
-      destino_lat,
-      destino_lng,
-      precio,
-      distancia_km || 0,
-      duracion_minutos || 0,
-      metodo_pago || "efectivo",
-    ];
-
-    const [result] = await pool.query(sql, values);
     const id_viaje = result.insertId;
 
-    // Intentar notificar AL conductor asignado (solo a él) usando conductoresConectados
+    // Intentar notificar AL conductor asignado (solo a él) usando usuariosConectados
     const key = String(id_conductor);
-    const socketId = conductoresConectados.get(key);
+    const socketId = usuariosConectados.get(key);
 
     const payload = {
       id_viaje,
       id_pasajero,
       id_conductor,
+      id_vehiculo,
       origen_lat,
       origen_lng,
       destino_lat,
       destino_lng,
       precio,
-      distancia_km: distancia_km || 0,
-      duracion_minutos: duracion_minutos || 0,
+      distancia_km,
+      duracion_minutos,
       metodo_pago: metodo_pago || "efectivo",
     };
 
     if (socketId) {
-      // Enviamos solicitud al conductor y esperamos respuesta via socket 'respuesta_viaje'
-      io.to(socketId).emit("viaje_solicitud", payload);
+      io.to(socketId).emit("viaje_asignado", payload);
       console.log(
-        `🚗 Solicitud de viaje enviada al conductor ${id_conductor} (socket ${socketId}) para viaje ${id_viaje}`
+        `🚗 Notificación enviada al conductor ${id_conductor} (socket ${socketId})`
       );
-
-      // Crear timeout para esperar la respuesta del conductor
-      const timeoutId = setTimeout(async () => {
-        // Si tiempo expiró, marcamos como 'no_respuesta' o 'rechazado' según prefieras
-        try {
-          await pool.query(
-            `UPDATE viajes SET estado = 'rechazado' WHERE id_viaje = ?`,
-            [id_viaje]
-          );
-          // Notificar al pasajero si está conectado
-          const pasajeroSocket = usuariosConectados.get(String(id_pasajero));
-          if (pasajeroSocket) {
-            io.to(pasajeroSocket).emit("viaje_respuesta", {
-              id_viaje,
-              id_conductor,
-              aceptado: false,
-              motivo: "timeout",
-            });
-            console.log(
-              `⏰ Timeout: pasajero ${id_pasajero} notificado que conductor no respondió.`
-            );
-          }
-        } catch (err) {
-          console.error(
-            "Error manejando timeout de respuesta del conductor:",
-            err
-          );
-        } finally {
-          pendingResponseTimers.delete(String(id_viaje));
-        }
-      }, DRIVER_RESPONSE_TIMEOUT_MS);
-
-      // Guardar timer para poder cancelarlo si el conductor responde
-      pendingResponseTimers.set(String(id_viaje), timeoutId);
     } else {
       console.log(
         `⚠️ Conductor ${id_conductor} no conectado - no se pudo notificar en tiempo real`
       );
     }
 
-    return res.status(201).json({
-      message: "Viaje creado correctamente",
-      id_viaje,
-    });
-  } catch (error) {
-    console.error("Error en /api/viajes:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
-  }
-});
-
-// ===================== NUEVO ENDPOINT: confirmarViaje (flujos explicitos) =====================
-// El frontend puede llamar a este endpoint cuando el usuario confirma un viaje seleccionado.
-// Body esperado:
-// {
-//   id_pasajero,
-//   id_conductor,
-//   origen_lat, origen_lng, destino_lat, destino_lng,
-//   precio,
-//   distancia_km,
-//   duracion_minutos,
-//   metodo_pago
-// }
-// Este endpoint creará el viaje en estado 'pendiente', notificará al conductor y esperará su respuesta (via socket).
-app.post("/api/confirmarViaje", async (req, res) => {
-  try {
-    const {
-      id_pasajero,
-      id_conductor,
-      origen_lat,
-      origen_lng,
-      destino_lat,
-      destino_lng,
-      precio,
-      distancia_km,
-      duracion_minutos,
-      metodo_pago,
-    } = req.body;
-
-    if (
-      id_pasajero == null ||
-      id_conductor == null ||
-      origen_lat == null ||
-      origen_lng == null ||
-      destino_lat == null ||
-      destino_lng == null ||
-      precio == null
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Faltan datos obligatorios para confirmar el viaje" });
-    }
-
-    // Crear el viaje en la BD en estado 'pendiente'
-    const insertSql = `
-      INSERT INTO viajes (
-        id_pasajero,
-        id_conductor,
-        origen_lat,
-        origen_lng,
-        destino_lat,
-        destino_lng,
-        precio,
-        distancia_km,
-        duracion_minutos,
-        metodo_pago,
-        estado
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente')
-    `;
-    const values = [
-      id_pasajero,
-      id_conductor,
-      origen_lat,
-      origen_lng,
-      destino_lat,
-      destino_lng,
-      precio,
-      distancia_km || 0,
-      duracion_minutos || 0,
-      metodo_pago || "efectivo",
-    ];
-
-    const [result] = await pool.query(insertSql, values);
-    const id_viaje = result.insertId;
-
-    // Preparar payload y notificar al conductor si está conectado
-    const payload = {
-      id_viaje,
-      id_pasajero,
-      id_conductor,
-      origen_lat,
-      origen_lng,
-      destino_lat,
-      destino_lng,
-      precio,
-      distancia_km: distancia_km || 0,
-      duracion_minutos: duracion_minutos || 0,
-      metodo_pago: metodo_pago || "efectivo",
-    };
-
-    const socketId = conductoresConectados.get(String(id_conductor));
-    if (socketId) {
-      io.to(socketId).emit("viaje_solicitud", payload);
-      console.log(
-        `🚗 [confirmarViaje] Solicitud enviada al conductor ${id_conductor} para viaje ${id_viaje}`
-      );
-
-      // Setear timeout para la respuesta (si no responde en X ms se considera rechazado)
-      const timeoutId = setTimeout(async () => {
-        try {
-          await pool.query(
-            `UPDATE viajes SET estado = 'rechazado' WHERE id_viaje = ?`,
-            [id_viaje]
-          );
-          const pasajeroSocket = usuariosConectados.get(String(id_pasajero));
-          if (pasajeroSocket) {
-            io.to(pasajeroSocket).emit("viaje_respuesta", {
-              id_viaje,
-              id_conductor,
-              aceptado: false,
-              motivo: "timeout",
-            });
-            console.log(
-              `⏰ [confirmarViaje timeout] pasajero ${id_pasajero} notificado (driver no respondió).`
-            );
-          }
-        } catch (err) {
-          console.error("Error actualizando viaje tras timeout:", err);
-        } finally {
-          pendingResponseTimers.delete(String(id_viaje));
-        }
-      }, DRIVER_RESPONSE_TIMEOUT_MS);
-
-      pendingResponseTimers.set(String(id_viaje), timeoutId);
-    } else {
-      console.log(`⚠️ [confirmarViaje] Conductor ${id_conductor} no conectado`);
-      // opcional: podríamos marcar el viaje como 'sin_conductor' o dejar 'pendiente' para revisión
-    }
-
-    return res.status(201).json({
-      ok: true,
-      message:
-        "Viaje confirmado y solicitud enviada al conductor (si está conectado)",
-      id_viaje,
-    });
+    res.status(201).json({ success: true, id_viaje });
   } catch (err) {
-    console.error("Error en /api/confirmarViaje:", err);
-    res.status(500).json({ ok: false, message: "Error interno" });
+    console.error("Error al crear el viaje:", err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

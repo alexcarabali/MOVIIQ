@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Socket } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 import {
   Home,
   Bell,
@@ -15,8 +15,6 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "./page.modules.css";
-import socket from "../utils/socket";
-import { useAuth } from "../context/AuthContext";
 
 // ================= ICONOS =================
 const iconConductor = new L.Icon({
@@ -34,21 +32,14 @@ const iconPasajero = new L.Icon({
 // =====================================================
 
 export default function HomeConductor() {
-  const auth = (useAuth?.() ?? null) as any;
-  const user = auth?.user ?? auth ?? null;
-
   const [viajes, setViajes] = useState<any[]>([]);
-  const [solicitud, setSolicitud] = useState<any | null>(null);
-
   const [posicion, setPosicion] = useState<[number, number] | null>(null);
   const [conectado, setConectado] = useState(false);
   const [estado, setEstado] = useState("disponible");
-
   const [conductor, setConductor] = useState<any>(null);
   const [mostrarSidebar, setMostrarSidebar] = useState(false);
   const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
   const [notificaciones, setNotificaciones] = useState<string[]>([]);
-
   const audioRef = useRef<HTMLAudioElement>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -56,80 +47,57 @@ export default function HomeConductor() {
   // ===================== SOCKET.IO =====================
   // =====================================================
   useEffect(() => {
-    const fromStorage = localStorage.getItem("conductor");
-    const conductorGuardado = fromStorage ? JSON.parse(fromStorage) : null;
+    // Cargar datos del conductor desde localStorage
+    const data = localStorage.getItem("conductor");
+    const conductorGuardado = data ? JSON.parse(data) : null;
+    setConductor(conductorGuardado);
 
-    const actual = user ?? conductorGuardado;
-    setConductor(actual);
+    const socket = io("http://localhost:4000");
+    socketRef.current = socket;
 
-    socketRef.current = socket as unknown as Socket;
-
-    /** Conexión */
-    const onConnect = () => {
+    // 🔵 Conexión
+    socket.on("connect", () => {
       setConectado(true);
       setNotificaciones((prev) => [...prev, "🟢 Conectado al servidor"]);
 
-      const id =
-        actual?.id ?? actual?.id_conductor ?? actual?.id_usuario ?? null;
-
-      if (id) {
-        socket.emit("registrar_usuario", { id, rol: "conductor" });
-        console.log("🟢 Conductor registrado:", id);
+      if (conductorGuardado) {
+        // Registrar el conductor con su id REAL
+        socket.emit("registrar_usuario", conductorGuardado.id);
+        console.log("🟢 Conductor registrado en socket:", conductorGuardado.id);
       }
-    };
+    });
 
-    /** Desconexión */
-    const onDisconnect = () => {
+    // 🔴 Desconexión
+    socket.on("disconnect", () => {
       setConectado(false);
       setNotificaciones((prev) => [...prev, "🔴 Desconectado del servidor"]);
-    };
+    });
 
-    /** Viaje Solicitado */
-    const onViajeSolicitud = (viaje: any) => {
-      const miId = actual?.id ?? actual?.id_conductor;
+    // =====================================================
+    // =============  VIAJE ASIGNADO CORRECTO  =============
+    // =====================================================
+    socket.on("viaje_asignado", (viaje) => {
+      console.log("📩 Evento viaje_asignado recibido:", viaje);
 
-      if (String(viaje.id_conductor) !== String(miId)) return;
+      if (!conductor || viaje.id_conductor !== conductor.id) {
+        console.log("⛔ Este viaje no es para este conductor");
+        return;
+      }
 
       setViajes((prev) => [...prev, viaje]);
-      setSolicitud(viaje);
 
       setNotificaciones((prev) => [
         ...prev,
-        `🚖 Nueva solicitud de viaje (${viaje.id_viaje})`,
+        `🚖 Viaje asignado: (${viaje.origen_lat}, ${viaje.origen_lng}) → (${viaje.destino_lat}, ${viaje.destino_lng})`,
       ]);
 
       audioRef.current?.play();
-    };
-
-    /** Viaje Asignado */
-    const onViajeAsignado = (viaje: any) => {
-      const miId = actual?.id ?? actual?.id_conductor;
-
-      if (String(viaje.id_conductor) !== String(miId)) return;
-
-      setViajes((prev) => [...prev, viaje]);
-      setSolicitud(viaje);
-
-      setNotificaciones((prev) => [
-        ...prev,
-        `🚖 Viaje asignado (${viaje.id_viaje})`,
-      ]);
-
-      audioRef.current?.play();
-    };
-
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("viaje_solicitud", onViajeSolicitud);
-    socket.on("viaje_asignado", onViajeAsignado);
+    });
 
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("viaje_solicitud", onViajeSolicitud);
-      socket.off("viaje_asignado", onViajeAsignado);
+      socket.disconnect();
     };
-  }, [user]);
+  }, []);
 
   // =====================================================
   // =================== GEOLOCALIZACIÓN =================
@@ -150,41 +118,22 @@ export default function HomeConductor() {
     const nuevo = estado === "disponible" ? "ocupado" : "disponible";
     setEstado(nuevo);
 
-    setNotificaciones((prev) => [...prev, `🔄 Estado cambiado: ${nuevo}`]);
-
-    socket.emit("actualizar_estado", {
-      id_conductor: conductor?.id ?? conductor?.id_conductor,
-      estado: nuevo,
-    });
+    setNotificaciones((prev) => [...prev, `🔄 Estado cambiado a: ${nuevo}`]);
   };
 
-  const responderSolicitud = (aceptado: boolean) => {
-    if (!solicitud) return;
+  const aceptarViaje = (id: number) => {
+    alert(`✔ Viaje ${id} aceptado`);
 
-    const id_viaje = solicitud.id_viaje;
-    const id_conductor = conductor?.id ?? conductor?.id_conductor;
+    setNotificaciones((prev) => [...prev, `🚖 Aceptaste el viaje ${id}`]);
 
-    socket.emit("respuesta_viaje", {
-      id_viaje,
-      id_conductor,
-      aceptado,
-      id_pasajero:
-        solicitud.id_pasajero ??
-        solicitud.id_usuario ??
-        solicitud.id_usuario_pasajero,
-    });
+    setViajes((prev) => prev.filter((v) => v.id_viaje !== id));
 
-    setNotificaciones((prev) => [
-      ...prev,
-      aceptado
-        ? `✅ Aceptaste el viaje ${id_viaje}`
-        : `❌ Rechazaste el viaje ${id_viaje}`,
-    ]);
-
-    setViajes((prev) =>
-      prev.filter((v) => String(v.id_viaje) !== String(id_viaje))
-    );
-    setSolicitud(null);
+    if (socketRef.current && conductor) {
+      socketRef.current.emit("conductor_acepta_viaje", {
+        id_viaje: id,
+        id_conductor: conductor.id,
+      });
+    }
   };
 
   const manejarEventoSidebar = (evento: string) => {
@@ -246,47 +195,45 @@ export default function HomeConductor() {
 
       {/* ================= CONTENIDO PRINCIPAL ================= */}
       <div className="container-general">
-        <div className="info-conductor">
-          <h1 className="titulo-conductor">🚗 Panel del Conductor</h1>
+        <h1 className="titulo-conductor">🚗 Panel del Conductor</h1>
 
-          <div
-            className={`estado-conexion ${
-              conectado ? "text-green-600" : "text-red-500"
-            }`}
-          >
-            {conectado ? "🟢 Conectado" : "🔴 Desconectado"}
-          </div>
+        <div
+          className={`estado-conexion ${
+            conectado ? "text-green-600" : "text-red-500"
+          }`}
+        >
+          {conectado ? "🟢 Conectado al servidor" : "🔴 Desconectado"}
+        </div>
 
-          {/* Info conductor */}
-          <div className="card-datos">
-            <p>
-              <strong>Nombre:</strong> {conductor?.nombre || "—"}
-            </p>
-            <p>
-              <strong>Vehículo:</strong> {conductor?.vehiculo || "Desconocido"}{" "}
-              ({conductor?.placa || "—"})
-            </p>
-            <p>
-              <strong>Estado:</strong>{" "}
-              <span
-                className={
-                  estado === "disponible" ? "text-green-600" : "text-red-500"
-                }
-              >
-                {estado}
-              </span>
-            </p>
-            <button
-              onClick={cambiarEstado}
-              className={`btn-estado ${
-                estado === "disponible"
-                  ? "bg-red-500 hover:bg-red-600"
-                  : "bg-green-500 hover:bg-green-600"
+        {/* Info conductor */}
+        <div className="card-datos">
+          <p>
+            <strong>Nombre:</strong> {conductor?.nombre || "—"}
+          </p>
+          <p>
+            <strong>Vehículo:</strong> {conductor?.vehiculo || "Desconocido"} (
+            {conductor?.placa || "—"})
+          </p>
+          <p>
+            <strong>Estado:</strong>{" "}
+            <span
+              className={`${
+                estado === "disponible" ? "text-green-600" : "text-red-500"
               }`}
             >
-              Cambiar a {estado === "disponible" ? "ocupado" : "disponible"}
-            </button>
-          </div>
+              {estado}
+            </span>
+          </p>
+          <button
+            onClick={cambiarEstado}
+            className={`btn-estado ${
+              estado === "disponible"
+                ? "bg-red-500 hover:bg-red-600"
+                : "bg-green-500 hover:bg-green-600"
+            }`}
+          >
+            Cambiar a {estado === "disponible" ? "ocupado" : "disponible"}
+          </button>
         </div>
 
         {/* Mapa */}
@@ -298,12 +245,10 @@ export default function HomeConductor() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
 
-              {/* 🚗 Posición del conductor */}
               <Marker position={posicion} icon={iconConductor}>
                 <Popup>Tu ubicación actual</Popup>
               </Marker>
 
-              {/* 📍 Viajes disponibles */}
               {viajes.map((v) => (
                 <Marker
                   key={v.id_viaje}
@@ -312,12 +257,11 @@ export default function HomeConductor() {
                 >
                   <Popup>
                     <strong>{v.nombre_pasajero || "Pasajero"}</strong>
-                    <br />
-                    {v.origen_lat}, {v.origen_lng} → {v.destino_lat},{" "}
-                    {v.destino_lng}
+                    <br />({v.origen_lat}, {v.origen_lng}) → ({v.destino_lat},{" "}
+                    {v.destino_lng})
                     <br />
                     <button
-                      onClick={() => responderSolicitud(true)}
+                      onClick={() => aceptarViaje(v.id_viaje)}
                       className="btn-aceptar"
                     >
                       Aceptar viaje
@@ -351,42 +295,6 @@ export default function HomeConductor() {
           ) : (
             <p className="text-gray-400 text-sm">Sin notificaciones aún.</p>
           )}
-        </div>
-      )}
-
-      {/* ============ POPUP DE SOLICITUD (ACEPTAR/RECHAZAR) ============ */}
-      {solicitud && (
-        <div className="popup-solicitud">
-          <div className="popup-card">
-            <h2>📩 Nueva solicitud de viaje</h2>
-            <p>
-              <strong>Pasajero:</strong>{" "}
-              {solicitud.nombre_pasajero ?? "Desconocido"}
-            </p>
-            <p>
-              <strong>Origen:</strong> {solicitud.origen_lat},{" "}
-              {solicitud.origen_lng}
-            </p>
-            <p>
-              <strong>Destino:</strong> {solicitud.destino_lat},{" "}
-              {solicitud.destino_lng}
-            </p>
-
-            <div className="popup-actions">
-              <button
-                className="btn-aceptar"
-                onClick={() => responderSolicitud(true)}
-              >
-                Aceptar
-              </button>
-              <button
-                className="btn-rechazar"
-                onClick={() => responderSolicitud(false)}
-              >
-                Rechazar
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

@@ -170,7 +170,7 @@ export default function HomeAdmin() {
 
       <main style={{ flex: 1, padding: "2rem", overflowY: "auto" }}>
         <header className="admin-header">
-          <h1>🛠️ Panel Admin - CRUD General</h1>
+          <h1>Panel Admin - CRUD</h1>
         </header>
 
         {mensaje && <div className="admin-message">{mensaje}</div>}
@@ -234,45 +234,53 @@ export default function HomeAdmin() {
         )}
 
         <section className="admin-table-section">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                {datos[0] &&
-                  Object.keys(datos[0]).map((col) => <th key={col}>{col}</th>)}
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datos.map((row: any) => (
-                <tr key={getRowId(row)}>
-                  {Object.keys(row).map((col) => (
-                    <td key={col}>{row[col]}</td>
-                  ))}
-                  <td className="table-actions">
-                    <button
-                      className="btn-edit"
-                      onClick={() => handleEdit(row)}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      className="btn-delete"
-                      onClick={() => handleDelete(row)}
-                    >
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {datos.length === 0 && (
+          <div className="table-responsive">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <td colSpan={Object.keys(form).length + 1}>
-                    No hay registros para mostrar
-                  </td>
+                  {datos[0] &&
+                    Object.keys(datos[0]).map((col) => (
+                      <th key={col}>{col.replace(/_/g, " ")}</th>
+                    ))}
+                  <th>Acciones</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {datos.map((row: any) => (
+                  <tr key={getRowId(row)}>
+                    {Object.keys(row).map((col) => (
+                      <td key={col}>{row[col]}</td>
+                    ))}
+
+                    <td className="table-actions">
+                      <button
+                        className="btn-table edit"
+                        onClick={() => handleEdit(row)}
+                      >
+                        Editar
+                      </button>
+
+                      <button
+                        className="btn-table delete"
+                        onClick={() => handleDelete(row)}
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+
+                {datos.length === 0 && (
+                  <tr>
+                    <td colSpan={Object.keys(form).length + 1}>
+                      No hay registros para mostrar
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       </main>
     </div>

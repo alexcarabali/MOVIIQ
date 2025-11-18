@@ -232,60 +232,108 @@ button {
 
 /* Tabla */
 .admin-table-section {
-  overflow-x: auto;
+  width: 100%;
+  margin-top: 20px;
 }
 
+.table-responsive {
+  width: 100%;
+  overflow-x: auto; /* 👈 Esto evita el desborde */
+  border-radius: 10px;
+}
+
+/* Tabla */
 .admin-table {
   width: 100%;
   border-collapse: collapse;
-  background-color: #fff;
-  border-radius: 12px;
+  table-layout: fixed; /* ← Esto es lo importante */
+
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  min-width: 700px; /* Evita deformación de columnas */
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Encabezado */
+.admin-table thead {
+  background: #1d2939;
+  color: #ffffff;
+  text-transform: capitalize;
 }
 
 .admin-table th,
 .admin-table td {
-  padding: 0.75rem 1rem;
+  padding: 10px;
   text-align: left;
+  width: 1%; /* El navegador reparte equitativamente */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.admin-table th {
-  background-color: #3b82f6;
-  color: #fff;
-  font-weight: 600;
+/* Zebra rows */
+.admin-table tbody tr:nth-child(even) {
+  background: #f9fafb;
 }
 
-.admin-table tr:nth-child(even) {
-  background-color: #f3f4f6;
+.admin-table tbody tr:hover {
+  background: #eef2ff;
 }
 
-.admin-table tr:hover {
-  background-color: #e0f2fe;
+/* Botones de acción */
+.table-actions {
+  display: flex;
+  gap: 8px;
 }
 
-.table-actions button {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.9rem;
+.btn-table {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  transition: 0.2s;
 }
 
-.btn-edit {
-  background-color: #10b981;
-  color: #fff;
+.btn-table.edit {
+  background: #2563eb;
+  color: white;
 }
 
-.btn-edit:hover {
-  background-color: #059669;
+.btn-table.edit:hover {
+  background: #1e40af;
 }
 
-.btn-delete {
-  background-color: #ef4444;
-  color: #fff;
-  margin-left: 0.5rem;
+.btn-table.delete {
+  background: #dc2626;
+  color: white;
 }
 
-.btn-delete:hover {
-  background-color: #b91c1c;
+.btn-table.delete:hover {
+  background: #991b1b;
+}
+
+/* Texto vacío */
+.admin-table td[colspan] {
+  text-align: center;
+  padding: 18px;
+  color: #6b7280;
+}
+
+/* Responsive: en pantallas muy pequeñas, permitir scroll */
+@media (max-width: 600px) {
+  .admin-table th,
+  .admin-table td {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .btn-table {
+    font-size: 12px;
+    padding: 4px 6px;
+  }
 }
 
 /* Responsivo */
@@ -314,8 +362,8 @@ button {
     padding: 1rem;
   }
 
-  .admin-table th,
+  /* .admin-table th,
   .admin-table td {
     padding: 0.5rem;
-  }
+  } */
 }

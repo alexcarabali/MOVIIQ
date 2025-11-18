@@ -4,53 +4,26 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import "./page.modules.css";
 import dynamic from "next/dynamic";
-import socket from "../utils/socket"; // ⬅⬅⬅ IMPORTANTE: socket.io cliente
 
 export default function ConfirmarRutaPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const [ready, setReady] = useState(false);
-  const [paramsListos, setParamsListos] = useState(false);
-
-  const [origen, setOrigen] = useState<[number, number] | null>(null);
-  const [destino, setDestino] = useState<[number, number] | null>(null);
-  const [precioViaje, setPrecioViaje] = useState<number>(0);
-
-  // =====================================================
-  // Activar render en cliente
-  // =====================================================
-  useEffect(() => {
-    setReady(true);
-  }, []);
-
   const MapaLeaflet = dynamic(() => import("../components/MapaLeaflet"), {
     ssr: false,
   });
 
-  // =====================================================
-  // LECTURA SEGURA DE COORDENADAS
-  // (Se ejecuta SOLO cuando searchParams ya está cargado)
-  // =====================================================
-  useEffect(() => {
-    const oLng = parseFloat(searchParams.get("origenLng") || "-76.532");
-    const oLat = parseFloat(searchParams.get("origenLat") || "3.4516");
-    const dLng = parseFloat(searchParams.get("destinoLng") || "-76.52");
-    const dLat = parseFloat(searchParams.get("destinoLat") || "3.41");
-    const p = parseInt(searchParams.get("precio") || "8000");
+  // ========================= DATOS DE RUTA =========================
+  const origenLng = parseFloat(searchParams.get("origenLng") || "-76.532");
+  const origenLat = parseFloat(searchParams.get("origenLat") || "3.4516");
+  const destinoLng = parseFloat(searchParams.get("destinoLng") || "-76.52");
+  const destinoLat = parseFloat(searchParams.get("destinoLat") || "3.41");
+  const precio = parseInt(searchParams.get("precio") || "8000");
 
-    setOrigen([oLat, oLng]);
-    setDestino([dLat, dLng]);
-    setPrecioViaje(p);
-
-    setParamsListos(true);
-  }, [searchParams]);
-
-  // =====================================================
-  // ESTADOS
-  // =====================================================
+  const [origen] = useState<[number, number]>([origenLat, origenLng]);
+  const [destino] = useState<[number, number]>([destinoLat, destinoLng]);
   const [distancia, setDistancia] = useState<number | null>(null);
   const [duracion, setDuracion] = useState<number | null>(null);
+
   const [estado, setEstado] = useState<
     "buscando" | "confirmando" | "confirmado" | "cancelado"
   >("buscando");
@@ -60,43 +33,28 @@ export default function ConfirmarRutaPage() {
   const [loadingConfirmar, setLoadingConfirmar] = useState(false);
   const [loadingConductores, setLoadingConductores] = useState(true);
 
-  // =====================================================
-  // REGISTRAR PASAJERO EN SOCKET
-  // =====================================================
-  useEffect(() => {
-    try {
-      const usuario =
-        localStorage.getItem("usuario") || localStorage.getItem("pasajero");
-
-      if (usuario) {
-        const obj = JSON.parse(usuario);
-        const idPasajero =
-          obj?.id || obj?.id_usuario || obj?.id_pasajero || null;
-
-        if (idPasajero) {
-          socket.emit("registrarPasajero", idPasajero);
-          console.log("✔ Pasajero registrado en socket:", idPasajero);
-        }
-      }
-    } catch (e) {
-      console.warn("No se pudo registrar pasajero en socket.");
-    }
-  }, []);
-
-  // =====================================================
-  // CARGAR CONDUCTORES
-  // =====================================================
+  // ========================= EFECTO CARGAR CONDUCTORES =========================
   useEffect(() => {
     const cargarConductores = async () => {
       setLoadingConductores(true);
       try {
         const res = await fetch("http://localhost:4000/api/conductores");
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || "Error al obtener conductores");
+        }
         const data = await res.json();
-        setConductores(Array.isArray(data) ? data : []);
+        const lista = Array.isArray(data) ? data : [];
+        setConductores(lista);
         setEstado("confirmando");
-      } catch (error) {
-        console.error("Error al obtener conductores", error);
-        alert("Error cargando conductores.");
+      } catch (err: any) {
+        console.error("Error al cargar conductores:", err);
+        setConductores([]);
+        setEstado("buscando");
+        // muestra alerta ligera
+        alert(
+          "No se pudieron cargar conductores. Revisa tu backend o tu conexión. Ver consola para más detalles."
+        );
       } finally {
         setLoadingConductores(false);
       }
@@ -105,48 +63,41 @@ export default function ConfirmarRutaPage() {
     cargarConductores();
   }, []);
 
-  // =====================================================
-  // CALCULAR DISTANCIA Y TIEMPO
-  // =====================================================
+  // ========================= EFECTO CALCULAR DISTANCIA =========================
   useEffect(() => {
-    if (!origen || !destino) return;
-
     const toRad = (x: number) => (x * Math.PI) / 180;
     const R = 6371; // km
     const dLat = toRad(destino[0] - origen[0]);
     const dLng = toRad(destino[1] - origen[1]);
-
     const a =
       Math.sin(dLat / 2) ** 2 +
       Math.cos(toRad(origen[0])) *
         Math.cos(toRad(destino[0])) *
         Math.sin(dLng / 2) ** 2;
-
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distanciaKm = R * c;
 
     setDistancia(distanciaKm);
-    setDuracion((distanciaKm / 40) * 60);
+    setDuracion((distanciaKm / 40) * 60); // minutos (asumiendo 40 km/h)
   }, [origen, destino]);
 
-  // =====================================================
-  // CONFIRMAR VIAJE
-  // =====================================================
+  // ========================= EVENTOS =========================
   const handleConfirmar = async () => {
-    if (!conductorSeleccionado)
-      return alert("Selecciona un conductor antes de confirmar.");
-    if (!origen || !destino) return alert("Error en las coordenadas.");
+    if (!conductorSeleccionado) return alert("Selecciona un conductor");
 
+    // Obtener id_pasajero desde localStorage (si existe) o fallback a 4
     let idPasajero = 4;
     try {
       const usuario =
         localStorage.getItem("usuario") || localStorage.getItem("pasajero");
       if (usuario) {
         const obj = JSON.parse(usuario);
-        idPasajero =
-          obj?.id || obj?.id_usuario || obj?.id_pasajero || idPasajero;
+        if (obj?.id) idPasajero = obj.id;
+        if (obj?.id_usuario) idPasajero = obj.id_usuario;
       }
-    } catch {}
+    } catch {
+      // si falla, mantener 4
+    }
 
     const viajePayload = {
       id_pasajero: idPasajero,
@@ -156,20 +107,28 @@ export default function ConfirmarRutaPage() {
       origen_lng: origen[1],
       destino_lat: destino[0],
       destino_lng: destino[1],
-      precio: precioViaje,
+      precio,
       distancia_km: distancia ?? 0,
       duracion_minutos: duracion ? Math.round(duracion) : 0,
       metodo_pago: "efectivo",
     };
 
     const confirmar = window.confirm(
-      `¿Confirmas este viaje con ${conductorSeleccionado.nombre}?`
+      `¿Confirmas el viaje?\n\nConductor: ${conductorSeleccionado.nombre} ${
+        conductorSeleccionado.apellido
+      }\n📍 Desde: ${origen[0].toFixed(5)}, ${origen[1].toFixed(
+        5
+      )}\n🏁 Hasta: ${destino[0].toFixed(5)}, ${destino[1].toFixed(
+        5
+      )}\n💰 Precio estimado: $${(precio ?? 0).toLocaleString()}`
     );
+
     if (!confirmar) return;
 
     setLoadingConfirmar(true);
 
     try {
+      // 1) Guardar viaje
       const res = await fetch("http://localhost:4000/api/viajes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -177,48 +136,69 @@ export default function ConfirmarRutaPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      if (!res.ok) {
+        throw new Error(data.message || "Error al crear el viaje");
+      }
 
-      const idViaje = data.id_viaje || data.id || data.insertId || null;
+      // 2) Intentar notificar al conductor mediante endpoint de notificación
+      try {
+        const notiRes = await fetch(
+          "http://localhost:4000/api/notificar-conductor",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id_conductor: conductorSeleccionado.id_conductor,
+              viaje: {
+                ...viajePayload,
+                id_viaje:
+                  data.id_viaje ?? (data.id_viaje || data.id || data.id_viaje),
+              },
+            }),
+          }
+        );
 
-      socket.emit("solicitar-viaje", {
-        id_conductor: conductorSeleccionado.id_conductor,
-        id_pasajero: idPasajero,
-        id_viaje: idViaje,
-        viaje: { ...viajePayload, id_viaje: idViaje },
-      });
-
-      console.log("📡 Notificación emitida al conductor:", {
-        id_conductor: conductorSeleccionado.id_conductor,
-        id_viaje: idViaje,
-      });
+        const notiData = await notiRes.json().catch(() => ({}));
+        if (notiRes.ok && notiData.ok !== false) {
+          // Notificación enviada o al menos el backend la aceptó
+          alert("Viaje confirmado y notificación enviada al conductor.");
+        } else {
+          // Backend respondió no conectado o falló, mostrar aviso pero continuar
+          console.warn(
+            "Advertencia: notificación no enviada o conductor no conectado.",
+            notiData
+          );
+          alert(
+            "Viaje confirmado, pero el conductor no está conectado. El conductor verá el viaje cuando se conecte."
+          );
+        }
+      } catch (err) {
+        console.error("Error al notificar conductor:", err);
+        alert(
+          "Viaje confirmado, pero ocurrió un error al notificar al conductor (ver consola)."
+        );
+      }
 
       setEstado("confirmado");
 
-      alert("Viaje confirmado. El conductor fue notificado.");
-
-      router.push("#");
-    } catch (err: any) {
-      console.error("Error confirmando viaje:", err);
-      alert("Error al confirmar el viaje.");
+      // 3) Redirigir a página de confirmación final (o estado)
+      router.push("/viajeConfirmado");
+    } catch (error: any) {
+      console.error("Error al guardar el viaje:", error);
+      alert(
+        "Error al guardar el viaje: " + (error.message || "Error desconocido")
+      );
     } finally {
       setLoadingConfirmar(false);
     }
   };
 
-  // =====================================================
-  // CANCELAR VIAJE
-  // =====================================================
   const handleCancelar = () => {
     setEstado("cancelado");
     setTimeout(() => router.push("/inicio"), 800);
   };
 
-  // =====================================================
-  // RENDER FINAL
-  // =====================================================
-  if (!ready || !paramsListos || !origen || !destino) return null;
-
+  // ========================= RENDER =========================
   return (
     <div className="home-container dark-theme">
       <div className="container-confirmar">
@@ -230,19 +210,19 @@ export default function ConfirmarRutaPage() {
           {estado === "buscando" && (
             <div className="panel-busqueda">
               <div className="loader"></div>
-              <p>Buscando conductores...</p>
+              <p>Buscando conductores disponibles...</p>
             </div>
           )}
 
           {estado === "confirmando" && (
             <div className="confirmar-viaje-container">
-              <h3>Selecciona un conductor</h3>
+              <h3>Selecciona un conductor disponible</h3>
 
               <div className="lista-conductores">
                 {loadingConductores ? (
-                  <p>Cargando...</p>
+                  <p>Cargando conductores...</p>
                 ) : conductores.length === 0 ? (
-                  <p>No hay conductores disponibles.</p>
+                  <p>No hay conductores disponibles en este momento.</p>
                 ) : (
                   conductores.map((c) => {
                     const isSelected =
@@ -258,18 +238,32 @@ export default function ConfirmarRutaPage() {
                           isSelected ? "seleccionado" : ""
                         }`}
                         onClick={() => setConductorSeleccionado(c)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ")
+                            setConductorSeleccionado(c);
+                        }}
                       >
-                        <img src={foto} className="foto-conductor" />
+                        <img
+                          src={foto}
+                          alt={c.nombre}
+                          className="foto-conductor"
+                        />
                         <div className="info-conductor">
                           <h4>
                             {c.nombre} {c.apellido}
                           </h4>
                           <p className="vehiculo">
-                            {c.tipo || "-"} {c.marca || "-"} {c.modelo || "-"} –{" "}
+                            {c.tipo || "-"} {c.marca || "-"} {c.modelo || "-"} —{" "}
                             {c.placa || "-"}
                           </p>
-                          <p className="telefono">{c.telefono}</p>
-                          <p className={`estado ${c.estado_verificacion}`}>
+                          <p className="telefono">
+                            {c.telefono || "Sin teléfono"}
+                          </p>
+                          <p
+                            className={`estado-verificacion ${c.estado_verificacion}`}
+                          >
                             {c.estado_verificacion?.toUpperCase() ||
                               "PENDIENTE"}
                           </p>
@@ -283,14 +277,15 @@ export default function ConfirmarRutaPage() {
               <div className="info-ruta">
                 <p>
                   <strong>Distancia:</strong>{" "}
-                  {distancia ? distancia.toFixed(2) + " km" : "..."}
+                  {distancia ? `${distancia.toFixed(2)} km` : "..."}
                 </p>
                 <p>
-                  <strong>Duración:</strong>{" "}
-                  {duracion ? Math.round(duracion) + " min" : "..."}
+                  <strong>Duración estimada:</strong>{" "}
+                  {duracion ? `${Math.round(duracion)} min` : "..."}
                 </p>
                 <p>
-                  <strong>Precio:</strong> ${precioViaje.toLocaleString()}
+                  <strong>Precio estimado:</strong> $
+                  {precio?.toLocaleString() || "0"}
                 </p>
               </div>
 
@@ -302,7 +297,6 @@ export default function ConfirmarRutaPage() {
                 >
                   {loadingConfirmar ? "Confirmando..." : "Confirmar viaje"}
                 </button>
-
                 <button className="btn-cancelar" onClick={handleCancelar}>
                   Cancelar
                 </button>
@@ -312,13 +306,14 @@ export default function ConfirmarRutaPage() {
 
           {estado === "confirmado" && (
             <div className="confirmacion-exitosa">
-              <h3>¡Viaje confirmado!</h3>
+              <h3>✅ Viaje confirmado</h3>
+              <p>Se notificó al conductor seleccionado.</p>
             </div>
           )}
 
           {estado === "cancelado" && (
             <div className="cancelado">
-              <h3>Has cancelado el viaje.</h3>
+              <h3>✖ Viaje cancelado</h3>
             </div>
           )}
         </div>
