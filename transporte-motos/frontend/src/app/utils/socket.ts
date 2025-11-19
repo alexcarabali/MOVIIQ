@@ -1,18 +1,35 @@
 // utils/socket.ts
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 
-// Evita múltiples sockets durante el Fast Refresh de Next.js
-let socket: any;
+let socket: Socket | null = null;
 
-if (!socket) {
+function createSocket() {
+  if (typeof window === "undefined") return null;
+  if (socket) return socket;
+
+  // Cambia la URL si usas otra
   socket = io("http://localhost:4000", {
-    autoConnect: true,
     transports: ["websocket"],
     withCredentials: true,
+    autoConnect: true,
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
   });
+
+  // logs útiles para debug
+  socket.on("connect", () => {
+    console.log("socket connected:", socket?.id);
+  });
+  socket.on("disconnect", (reason) => {
+    console.log("socket disconnected:", reason);
+  });
+  socket.on("connect_error", (err) => {
+    console.warn("socket connect_error:", err);
+  });
+
+  return socket;
 }
 
-export default socket;
+const s = createSocket();
+export default s as Socket;

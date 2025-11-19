@@ -12,30 +12,41 @@ export const socketHandler = (io) => {
 
     socket.on("registrar_usuario", (payload) => {
       try {
-        if (!payload && payload !== 0) return;
-        let id = null;
-        let rol = null;
+        if (!payload) return;
 
-        if (typeof payload === "object") {
-          id = payload.id ?? payload.id_conductor ?? payload.id_usuario ?? null;
-          rol = payload.rol ?? payload.role ?? null;
-        } else {
-          id = payload;
-        }
+        let id =
+          payload.id ||
+          payload.id_conductor ||
+          payload.id_usuario ||
+          payload.id_user ||
+          null;
 
-        if (id == null) return;
+        // NORMALIZACIÓN DE ROL (esta parte arregla tu problema)
+        let rol =
+          payload.rol?.toLowerCase?.() ||
+          payload.role?.toLowerCase?.() ||
+          payload.tipo?.toLowerCase?.() ||
+          payload.user_type?.toLowerCase?.() ||
+          null;
+
+        if (!id) return;
 
         const key = String(id);
 
         if (rol === "conductor" || rol === "driver") {
           conductoresConectados.set(key, socket.id);
-          console.log(`✅ Conductor ${key} registrado con socket ${socket.id}`);
+          console.log(
+            `🚗 Conductor ${key} registrado correctamente (socket ${socket.id})`
+          );
         } else {
           usuariosConectados.set(key, socket.id);
           console.log(
-            `✅ Usuario/pasajero ${key} registrado con socket ${socket.id}`
+            `👤 Usuario/pasajero ${key} registrado (socket ${socket.id})`
           );
         }
+
+        // OPCIONAL: meter al usuario a una room con su ID
+        socket.join(`user_${key}`);
       } catch (err) {
         console.warn("Error procesando registrar_usuario:", err);
       }
@@ -117,7 +128,11 @@ export const socketHandler = (io) => {
       console.log(
         `✅ Conductor ${id_conductor} aceptó viaje ${id_viaje} (evento conductor_acepta_viaje)`
       );
-      socket.emit("respuesta_viaje", { id_viaje, id_conductor, aceptado: true });
+      socket.emit("respuesta_viaje", {
+        id_viaje,
+        id_conductor,
+        aceptado: true,
+      });
     });
 
     socket.on("disconnect", () => {

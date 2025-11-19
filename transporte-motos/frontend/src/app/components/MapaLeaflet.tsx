@@ -14,13 +14,15 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
 type Props = {
-  origen: [number, number]; // [lat, lng]
-  destino: [number, number]; // [lat, lng]
+  origen: [number, number];
+  destino: [number, number];
   setPrecio: (precio: number) => void;
   onClickMapa?: (coords: [number, number]) => void;
+  conductorPos?: [number, number] | null;
+  conductorPath?: [number, number][];
+  viajeActivo?: any | null;
 };
 
-// 🔹 Corregir icono por defecto de Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -29,91 +31,85 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+// small icons for driver/passenger (you can keep your custom icons)
+const driverIcon = new L.Icon({
+  iconUrl: "/icons/car.png",
+  iconSize: [35, 35],
+});
+const passengerIcon = new L.Icon({
+  iconUrl: "/icons/passenger.png",
+  iconSize: [35, 35],
+});
+
 export default function MapaLeaflet({
   origen,
   destino,
   setPrecio,
   onClickMapa,
+  conductorPos,
+  conductorPath,
+  viajeActivo,
 }: Props) {
   const [ruta, setRuta] = useState<[number, number][]>([]);
   const [ubicacionActual, setUbicacionActual] = useState<
     [number, number] | null
   >(null);
 
-  // 🔹 Obtener ubicación actual
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUbicacionActual([pos.coords.latitude, pos.coords.longitude]);
-        },
+        (pos) =>
+          setUbicacionActual([pos.coords.latitude, pos.coords.longitude]),
         (err) => console.warn("No se pudo obtener ubicación:", err)
       );
     }
   }, []);
 
-  // 🔹 Calcular ruta (directamente a OSRM)
   useEffect(() => {
     if (!origen || !destino) return;
-    if (
-      isNaN(origen[0]) ||
-      isNaN(origen[1]) ||
-      isNaN(destino[0]) ||
-      isNaN(destino[1])
-    ) {
-      console.warn("⚠️ Coordenadas inválidas:", origen, destino);
+    if ([origen[0], origen[1], destino[0], destino[1]].some(Number.isNaN))
       return;
-    }
 
     const obtenerRuta = async () => {
       try {
         const url = `https://router.project-osrm.org/route/v1/driving/${origen[1]},${origen[0]};${destino[1]},${destino[0]}?overview=full&geometries=geojson`;
-
         const res = await fetch(url);
-        if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
-
         const data = await res.json();
-
         if (data.routes && data.routes.length > 0) {
           const coords: [number, number][] =
             data.routes[0].geometry.coordinates.map(
               ([lng, lat]: [number, number]) => [lat, lng]
             );
           setRuta(coords);
-
-          // Precio estimado por distancia (ejemplo: $2500 por km)
           const distanciaKm = data.routes[0].distance / 1000;
           setPrecio(Math.round(distanciaKm * 2500));
         } else {
-          console.warn("No se encontraron rutas válidas:", data);
-          setRuta([origen, destino]); // fallback línea recta
+          setRuta([origen, destino]);
         }
-      } catch (error: any) {
-        console.error("❌ Error al obtener la ruta:", error.message);
-        setRuta([origen, destino]); // fallback
+      } catch (error) {
+        console.warn("Error ruta:", error);
+        setRuta([origen, destino]);
       }
     };
 
     obtenerRuta();
   }, [origen, destino, setPrecio]);
 
-  // 🔹 Centrar mapa
   const CenterMap = () => {
     const map = useMap();
-    const [centrado, setCentrado] = useState(false);
-
     useEffect(() => {
-      if (!centrado && origen && destino) {
+      if (origen && destino) {
         const bounds = L.latLngBounds([origen, destino]);
+        if (conductorPos)
+          bounds.extend(L.latLng(conductorPos[0], conductorPos[1]));
         map.fitBounds(bounds, { padding: [50, 50] });
-        setCentrado(true);
+      } else if (ubicacionActual) {
+        map.setView(ubicacionActual, 14);
       }
-    }, [map, origen, destino, centrado]);
-
+    }, [map, origen, destino, ubicacionActual, conductorPos]);
     return null;
   };
 
-  // 🔹 Manejar clics en el mapa
   const ClickHandler = () => {
     useMapEvents({
       click: (e) => {
@@ -129,18 +125,17 @@ export default function MapaLeaflet({
       <MapContainer
         center={ubicacionActual || origen}
         zoom={14}
-        style={{ width: "100%", height: "650px", borderRadius: "8px" }}
+        style={{ width: "100%", height: "650px", borderRadius: 8 }}
         scrollWheelZoom
         zoomControl
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution="&copy; OpenStreetMap contributors"
         />
 
         <CenterMap />
 
-        {/* Marcadores */}
         <Marker position={origen}>
           <Popup>Origen</Popup>
         </Marker>
@@ -151,9 +146,28 @@ export default function MapaLeaflet({
           </Marker>
         )}
 
-        {/* Ruta */}
-        {ruta.length > 0 && (
-          <Polyline positions={ruta} color="blue" weight={5} />
+        {ruta.length > 0 && <Polyline positions={ruta} weight={5} />}
+
+        {/* Conductor (si hay) */}
+        {conductorPos && (
+          <Marker position={conductorPos} icon={driverIcon}>
+            <Popup>Conductor</Popup>
+          </Marker>
+        )}
+
+        {/* Path histórico del conductor */}
+        {conductorPath && conductorPath.length > 0 && (
+          <Polyline positions={conductorPath} weight={4} dashArray="6" />
+        )}
+
+        {/* marcador del pasajero si hay viajeActivo */}
+        {viajeActivo && viajeActivo.origen_lat && (
+          <Marker
+            position={[viajeActivo.origen_lat, viajeActivo.origen_lng]}
+            icon={passengerIcon}
+          >
+            <Popup>Origen pasajero</Popup>
+          </Marker>
         )}
 
         <ClickHandler />

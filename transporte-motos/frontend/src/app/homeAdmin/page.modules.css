@@ -1,4 +1,6 @@
-/* Contenedor principal */
+/* ============================================================
+   CONTENEDOR PRINCIPAL
+============================================================ */
 .admin-container {
   display: flex;
   height: 90.4vh;
@@ -15,7 +17,7 @@
 ============================================================ */
 .sidebar {
   height: 90.4vh;
-  background-color: #0a0f18; /* Gris oscuro elegante */
+  background-color: #0a0f18;
   color: #f3f4f6;
   display: flex;
   flex-direction: column;
@@ -97,10 +99,6 @@
   transform: translateX(2px);
 }
 
-.sidebar-btn span {
-  transition: opacity 0.3s ease;
-}
-
 .sidebar-btn span.hidden {
   opacity: 0;
   display: none;
@@ -115,7 +113,9 @@
   text-align: center;
 }
 
-/* Header */
+/* ============================================================
+   HEADER
+============================================================ */
 .admin-header h1 {
   text-align: center;
   font-size: 2rem;
@@ -123,7 +123,9 @@
   color: #1f2937;
 }
 
-/* Mensajes */
+/* ============================================================
+   MENSAJES
+============================================================ */
 .admin-message {
   text-align: center;
   padding: 0.75rem 1rem;
@@ -134,16 +136,14 @@
   font-weight: 500;
 }
 
-/* Controles (select) */
+/* ============================================================
+   CONTROLES
+============================================================ */
 .admin-controls {
   display: flex;
   align-items: center;
   gap: 1rem;
   margin-bottom: 2rem;
-}
-
-.admin-controls label {
-  font-weight: 500;
 }
 
 .admin-controls select {
@@ -159,24 +159,15 @@
   border-color: #3b82f6;
 }
 
-/* Formulario */
+/* ============================================================
+   FORMULARIO
+============================================================ */
 .admin-form-section {
   margin-bottom: 2rem;
   background-color: #fff;
   padding: 1.5rem;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.admin-form h2 {
-  margin-bottom: 1rem;
-  color: #1e3a8a;
-}
-
-.form-info {
-  font-style: italic;
-  color: #6b7280;
-  margin-bottom: 1rem;
 }
 
 .admin-input {
@@ -196,7 +187,7 @@
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
-/* Botones */
+/* ---- BOTONES FORM ---- */
 .form-buttons {
   display: flex;
   gap: 1rem;
@@ -230,7 +221,9 @@ button {
   background-color: #d1d5db;
 }
 
-/* Tabla */
+/* ============================================================
+   TABLA
+============================================================ */
 .admin-table-section {
   width: 100%;
   margin-top: 20px;
@@ -238,42 +231,36 @@ button {
 
 .table-responsive {
   width: 100%;
-  overflow-x: auto; /* 👈 Esto evita el desborde */
+  overflow-x: auto;
   border-radius: 10px;
 }
 
-/* Tabla */
 .admin-table {
   width: 100%;
+  min-width: 700px;
   border-collapse: collapse;
-  table-layout: fixed; /* ← Esto es lo importante */
-
-  width: 100%;
-  border-collapse: collapse;
+  table-layout: fixed;
   background: #ffffff;
-  min-width: 700px; /* Evita deformación de columnas */
   border-radius: 10px;
   overflow: hidden;
 }
 
-/* Encabezado */
+/* ---- ENCABEZADO ---- */
 .admin-table thead {
   background: #1d2939;
   color: #ffffff;
-  text-transform: capitalize;
 }
 
 .admin-table th,
 .admin-table td {
   padding: 10px;
   text-align: left;
-  width: 1%; /* El navegador reparte equitativamente */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Zebra rows */
+/* ---- FILAS ---- */
 .admin-table tbody tr:nth-child(even) {
   background: #f9fafb;
 }
@@ -282,7 +269,7 @@ button {
   background: #eef2ff;
 }
 
-/* Botones de acción */
+/* ---- ACCIONES ---- */
 .table-actions {
   display: flex;
   gap: 8px;
@@ -292,14 +279,14 @@ button {
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 14px;
-  cursor: pointer;
   border: none;
+  cursor: pointer;
   transition: 0.2s;
 }
 
 .btn-table.edit {
   background: #2563eb;
-  color: white;
+  color: #fff;
 }
 
 .btn-table.edit:hover {
@@ -308,21 +295,40 @@ button {
 
 .btn-table.delete {
   background: #dc2626;
-  color: white;
+  color: #fff;
 }
 
 .btn-table.delete:hover {
   background: #991b1b;
 }
 
-/* Texto vacío */
+/* ---- TEXTO VACÍO ---- */
 .admin-table td[colspan] {
   text-align: center;
   padding: 18px;
   color: #6b7280;
 }
 
-/* Responsive: en pantallas muy pequeñas, permitir scroll */
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+@media (max-width: 768px) {
+  .admin-controls {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .form-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .admin-input {
+    width: 100% !important;
+  }
+}
+
 @media (max-width: 600px) {
   .admin-table th,
   .admin-table td {
@@ -336,23 +342,6 @@ button {
   }
 }
 
-/* Responsivo */
-@media (max-width: 768px) {
-  .admin-controls {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .form-buttons {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .admin-input {
-    width: 100%;
-  }
-}
-
 @media (max-width: 480px) {
   .admin-container {
     padding: 1rem;
@@ -361,9 +350,4 @@ button {
   .admin-form-section {
     padding: 1rem;
   }
-
-  /* .admin-table th,
-  .admin-table td {
-    padding: 0.5rem;
-  } */
 }

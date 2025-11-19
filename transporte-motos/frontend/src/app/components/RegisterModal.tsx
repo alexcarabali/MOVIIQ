@@ -94,8 +94,8 @@ export default function RegisterModal({
     // Construir endpoint y body
     const endpoint =
       tipoRegistro === "usuario"
-        ? "http://localhost:4000/register-usuario"
-        : "http://localhost:4000/register-conductor";
+        ? "http://localhost:4000/api/usuarios/register"
+        : "http://localhost:4000/api/conductores/register";
 
     const body =
       tipoRegistro === "usuario"

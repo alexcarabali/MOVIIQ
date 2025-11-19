@@ -1,11 +1,35 @@
+// app/(whatever)/ConfirmarRutaPage.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import "./page.modules.css";
 import dynamic from "next/dynamic";
-import socket from "../utils/socket"; // ⬅⬅⬅ IMPORTANTE: socket.io cliente
+import socket from "../utils/socket"; // instancia cliente socket.io (singleton)
 import { API_URL } from "../utils/api";
+import {
+  Home,
+  Star,
+  Settings,
+  Phone,
+  Lock,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+
+/**
+ * ConfirmarRutaPage
+ * - Confirma el viaje con un conductor
+ * - Escucha eventos socket para iniciar seguimiento:
+ *    -> 'viaje_iniciado'  (conductor aceptó y/o backend lo notifica)
+ *    -> 'ubicacion_conductor' (posiciones periódicas del conductor)
+ *    -> 'finalizar_viaje' (viaje finalizado)
+ *
+ * Requiere que en ../components/MapaLeaflet exista soporte para:
+ *   props: origen, destino, setPrecio, conductorPos?, conductorPath?, viajeActivo?
+ *
+ * También requiere ../utils/socket que exporte la instancia singleton del cliente.
+ */
 
 export default function ConfirmarRutaPage() {
   const router = useRouter();
@@ -17,43 +41,50 @@ export default function ConfirmarRutaPage() {
   const [origen, setOrigen] = useState<[number, number] | null>(null);
   const [destino, setDestino] = useState<[number, number] | null>(null);
   const [precioViaje, setPrecioViaje] = useState<number>(0);
+  const [mostrarSidebar, setMostrarSidebar] = useState(false);
 
-  // =====================================================
-  // Activar render en cliente
-  // =====================================================
-  useEffect(() => {
-    setReady(true);
-  }, []);
+  const menuItems = [
+    { icon: <Home size={22} />, label: "Inicio" },
+    { icon: <Star size={22} />, label: "Favoritos" },
+    { icon: <Settings size={22} />, label: "Configuración" },
+    { icon: <Phone size={22} />, label: "Contacto" },
+    { icon: <Lock size={22} />, label: "Cerrar sesión" },
+  ];
 
+  // activar render en cliente
+  useEffect(() => setReady(true), []);
+
+  // Import dinámico para evitar SSR con Leaflet
   const MapaLeaflet = dynamic(() => import("../components/MapaLeaflet"), {
     ssr: false,
   });
 
-  // =====================================================
-  // LECTURA SEGURA DE COORDENADAS
-  // (Se ejecuta SOLO cuando searchParams ya está cargado)
-  // =====================================================
+  // lectura segura de coords desde query params
   useEffect(() => {
     const oLng = parseFloat(searchParams.get("origenLng") || "-76.532");
     const oLat = parseFloat(searchParams.get("origenLat") || "3.4516");
     const dLng = parseFloat(searchParams.get("destinoLng") || "-76.52");
     const dLat = parseFloat(searchParams.get("destinoLat") || "3.41");
-    const p = parseInt(searchParams.get("precio") || "8000");
+    const p = parseInt(searchParams.get("precio") || "8000", 10) || 0;
 
     setOrigen([oLat, oLng]);
     setDestino([dLat, dLng]);
     setPrecioViaje(p);
 
     setParamsListos(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // =====================================================
-  // ESTADOS
-  // =====================================================
+  // estados principales
   const [distancia, setDistancia] = useState<number | null>(null);
   const [duracion, setDuracion] = useState<number | null>(null);
   const [estado, setEstado] = useState<
-    "buscando" | "confirmando" | "confirmado" | "cancelado"
+    | "buscando"
+    | "confirmando"
+    | "confirmado"
+    | "viaje_en_curso"
+    | "finalizado"
+    | "cancelado"
   >("buscando");
 
   const [conductores, setConductores] = useState<any[]>([]);
@@ -61,9 +92,19 @@ export default function ConfirmarRutaPage() {
   const [loadingConfirmar, setLoadingConfirmar] = useState(false);
   const [loadingConductores, setLoadingConductores] = useState(true);
 
-  // =====================================================
-  // REGISTRAR PASAJERO EN SOCKET
-  // =====================================================
+  // datos para seguimiento en tiempo real (pasajero)
+  const [viajeActivo, setViajeActivo] = useState<any | null>(null); // objeto viaje con id_viaje etc.
+  const [ubicacionConductor, setUbicacionConductor] = useState<
+    [number, number] | null
+  >(null);
+  const [pathConductor, setPathConductor] = useState<[number, number][]>([]);
+
+  // ref para comparar eventos con el viaje actual
+  const viajeIdRef = useRef<number | null>(null);
+
+  // ------------------------------
+  // registrar pasajero en socket
+  // ------------------------------
   useEffect(() => {
     try {
       const usuario =
@@ -80,13 +121,13 @@ export default function ConfirmarRutaPage() {
         }
       }
     } catch (e) {
-      console.warn("No se pudo registrar pasajero en socket.");
+      console.warn("No se pudo registrar pasajero en socket.", e);
     }
   }, []);
 
-  // =====================================================
-  // CARGAR CONDUCTORES
-  // =====================================================
+  // ------------------------------
+  // cargar conductores disponibles
+  // ------------------------------
   useEffect(() => {
     const cargarConductores = async () => {
       setLoadingConductores(true);
@@ -106,9 +147,9 @@ export default function ConfirmarRutaPage() {
     cargarConductores();
   }, []);
 
-  // =====================================================
-  // CALCULAR DISTANCIA Y TIEMPO
-  // =====================================================
+  // ------------------------------
+  // calcular distancia y duración (haversine simple)
+  // ------------------------------
   useEffect(() => {
     if (!origen || !destino) return;
 
@@ -127,17 +168,18 @@ export default function ConfirmarRutaPage() {
     const distanciaKm = R * c;
 
     setDistancia(distanciaKm);
-    setDuracion((distanciaKm / 40) * 60);
+    setDuracion((distanciaKm / 40) * 60); // asumiendo 40 km/h promedio
   }, [origen, destino]);
 
-  // =====================================================
-  // CONFIRMAR VIAJE
-  // =====================================================
+  // ------------------------------
+  // confirmar viaje: guarda en BD y notifica conductor vía socket
+  // ------------------------------
   const handleConfirmar = async () => {
     if (!conductorSeleccionado)
       return alert("Selecciona un conductor antes de confirmar.");
     if (!origen || !destino) return alert("Error en las coordenadas.");
 
+    // obtener id pasajero desde storage (fallback a 4)
     let idPasajero = 4;
     try {
       const usuario =
@@ -178,10 +220,15 @@ export default function ConfirmarRutaPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      if (!res.ok) {
+        // si el backend devuelve ok=false, data puede tener message
+        throw new Error(data?.message || "Error guardando viaje");
+      }
 
       const idViaje = data.id_viaje || data.id || data.insertId || null;
+      viajeIdRef.current = idViaje; // guardamos ref para filtrar eventos
 
+      // Emitir evento para notificar al conductor
       socket.emit("solicitar-viaje", {
         id_conductor: conductorSeleccionado.id_conductor,
         id_pasajero: idPasajero,
@@ -195,10 +242,7 @@ export default function ConfirmarRutaPage() {
       });
 
       setEstado("confirmado");
-
       alert("Viaje confirmado. El conductor fue notificado.");
-
-      router.push("#");
     } catch (err: any) {
       console.error("Error confirmando viaje:", err);
       alert("Error al confirmar el viaje.");
@@ -207,121 +251,320 @@ export default function ConfirmarRutaPage() {
     }
   };
 
-  // =====================================================
-  // CANCELAR VIAJE
-  // =====================================================
+  // cancelar
   const handleCancelar = () => {
     setEstado("cancelado");
     setTimeout(() => router.push("/inicio"), 800);
   };
 
-  // =====================================================
-  // RENDER FINAL
-  // =====================================================
+  // ------------------------------
+  // sockets: seguimiento (pasajero)
+  // ------------------------------
+  useEffect(() => {
+    // Handler: conductor aceptó y backend emite 'viaje_iniciado'
+    const handleViajeIniciado = (payload: any) => {
+      // payload expected: { id_viaje, id_conductor, viaje, ubicacion_inicial? }
+      const id_viaje =
+        payload?.id_viaje ?? payload?.viaje?.id_viaje ?? payload?.viaje?.id;
+      if (!id_viaje || String(id_viaje) !== String(viajeIdRef.current)) {
+        // evento no es para este viaje
+        return;
+      }
+
+      console.log("🚖 viaje_iniciado recibido:", payload);
+
+      setEstado("viaje_en_curso");
+      setViajeActivo(payload.viaje ?? payload);
+
+      // si viene ubicación inicial, úsala
+      if (payload?.ubicacion_inicial) {
+        const { lat, lng } = payload.ubicacion_inicial;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          setUbicacionConductor([lat, lng]);
+          setPathConductor([[lat, lng]]);
+        }
+      } else if (payload?.viaje?.origen_lat && payload?.viaje?.origen_lng) {
+        // fallback: colocar conductor en origen del pasajero al inicio
+        setUbicacionConductor([
+          payload.viaje.origen_lat,
+          payload.viaje.origen_lng,
+        ]);
+        setPathConductor([
+          [payload.viaje.origen_lat, payload.viaje.origen_lng],
+        ]);
+      }
+
+      // feedback usuario
+      try {
+        // no abuses de alert en producción, aquí es útil para debug
+        alert("¡El conductor aceptó tu viaje! Está en camino.");
+      } catch {}
+    };
+
+    // Handler: ubicaciones periódicas enviadas por el backend (reenviado por servidor)
+    const handleUbicacionConductor = (data: any) => {
+      // data expected: { id_viaje, lat, lng, timestamp }
+      if (!data || String(data.id_viaje) !== String(viajeIdRef.current)) return;
+
+      const lat = Number(data.lat);
+      const lng = Number(data.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        setUbicacionConductor([lat, lng]);
+        setPathConductor((prev) => {
+          // evita agregar duplicados exactos consecutivos
+          const last = prev.length ? prev[prev.length - 1] : null;
+          if (last && last[0] === lat && last[1] === lng) return prev;
+          return [...prev, [lat, lng]];
+        });
+      }
+    };
+
+    // Handler: backend notifica que viaje finalizó
+    const handleViajeFinalizado = (data: any) => {
+      if (!data || String(data.id_viaje) !== String(viajeIdRef.current)) return;
+
+      setEstado("finalizado");
+      alert("El viaje ha finalizado.");
+      // limpieza seguimiento
+      setViajeActivo(null);
+      viajeIdRef.current = null;
+      setUbicacionConductor(null);
+      setPathConductor([]);
+    };
+
+    // Registrar eventos (asegurando que socket esté disponible)
+    if (socket) {
+      socket.on("viaje_iniciado", handleViajeIniciado);
+      socket.on("ubicacion_conductor", handleUbicacionConductor);
+      socket.on("finalizar_viaje", handleViajeFinalizado);
+    } else {
+      console.warn("Socket no disponible en ConfirmarRutaPage.");
+    }
+
+    return () => {
+      if (socket) {
+        socket.off("viaje_iniciado", handleViajeIniciado);
+        socket.off("ubicacion_conductor", handleUbicacionConductor);
+        socket.off("finalizar_viaje", handleViajeFinalizado);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // permitir al usuario finalizar / cancelar seguimiento localmente
+  const handleFinalizarLocal = () => {
+    if (!viajeActivo) return;
+    const id_viaje = viajeActivo.id_viaje ?? viajeActivo.id;
+    socket.emit("finalizar_viaje", { id_viaje });
+    setEstado("finalizado");
+    setViajeActivo(null);
+    setUbicacionConductor(null);
+    setPathConductor([]);
+    viajeIdRef.current = null;
+  };
+
+  // RENDER
   if (!ready || !paramsListos || !origen || !destino) return null;
 
   return (
     <div className="home-container dark-theme">
-      <div className="container-confirmar">
-        <div className="mapa-confirmar-container">
-          <MapaLeaflet origen={origen} destino={destino} setPrecio={() => {}} />
+      {/* SIDEBAR */}
+      <aside className={`sidebar ${mostrarSidebar ? "visible" : "oculta"}`}>
+        <div className="sidebar-header">
+          <h1 className={`sidebar-title ${!mostrarSidebar ? "hidden" : ""}`}>
+            Moviiq
+          </h1>
+          <button
+            onClick={() => setMostrarSidebar(!mostrarSidebar)}
+            className="btn-toggle"
+          >
+            {mostrarSidebar ? <ChevronLeft /> : <ChevronRight />}
+          </button>
         </div>
 
-        <div className="panel-viaje">
-          {estado === "buscando" && (
-            <div className="panel-busqueda">
-              <div className="loader"></div>
-              <p>Buscando conductores...</p>
-            </div>
-          )}
+        <nav className="sidebar-menu">
+          {menuItems.map((item, idx) => (
+            <button key={idx} className="sidebar-btn">
+              {item.icon}
+              <span className={`${!mostrarSidebar ? "hidden" : ""}`}>
+                {item.label}
+              </span>
+            </button>
+          ))}
+        </nav>
 
-          {estado === "confirmando" && (
-            <div className="confirmar-viaje-container">
-              <h3>Selecciona un conductor</h3>
+        <div className="sidebar-footer">
+          {mostrarSidebar && <p>© 2025 Moviiq</p>}
+        </div>
+      </aside>
 
-              <div className="lista-conductores">
-                {loadingConductores ? (
-                  <p>Cargando...</p>
-                ) : conductores.length === 0 ? (
-                  <p>No hay conductores disponibles.</p>
-                ) : (
-                  conductores.map((c) => {
-                    const isSelected =
-                      conductorSeleccionado?.id_conductor === c.id_conductor;
-                    const foto =
-                      c.foto_perfil ||
-                      "https://randomuser.me/api/portraits/lego/1.jpg";
+      {/* MAIN */}
+      <div className="container-confirmar">
+        <div className="mapa-confirmar-container">
+          <MapaLeaflet
+            origen={origen}
+            destino={destino}
+            setPrecio={() => {}}
+            // props de seguimiento:
+            conductorPos={ubicacionConductor}
+            conductorPath={pathConductor}
+            viajeActivo={viajeActivo}
+          />
+        </div>
 
-                    return (
-                      <div
-                        key={c.id_conductor}
-                        className={`card-conductor ${
-                          isSelected ? "seleccionado" : ""
-                        }`}
-                        onClick={() => setConductorSeleccionado(c)}
-                      >
-                        <img src={foto} className="foto-conductor" />
-                        <div className="info-conductor">
-                          <h4>
-                            {c.nombre} {c.apellido}
-                          </h4>
-                          <p className="vehiculo">
-                            {c.tipo || "-"} {c.marca || "-"} {c.modelo || "-"} –{" "}
-                            {c.placa || "-"}
-                          </p>
-                          <p className="telefono">{c.telefono}</p>
-                          <p className={`estado ${c.estado_verificacion}`}>
-                            {c.estado_verificacion?.toUpperCase() ||
-                              "PENDIENTE"}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <div className="info-ruta">
+        <div className="container-panel">
+          <div className="panel-info-ruta">
+            <div className="info-ruta">
+              <div className="card-ruta">
                 <p>
                   <strong>Distancia:</strong>{" "}
                   {distancia ? distancia.toFixed(2) + " km" : "..."}
                 </p>
+              </div>
+              <div className="card-ruta">
                 <p>
                   <strong>Duración:</strong>{" "}
                   {duracion ? Math.round(duracion) + " min" : "..."}
                 </p>
+              </div>
+              <div className="card-ruta">
                 <p>
                   <strong>Precio:</strong> ${precioViaje.toLocaleString()}
                 </p>
               </div>
 
               <div className="acciones-viaje">
-                <button
-                  className="btn-confirmar"
-                  onClick={handleConfirmar}
-                  disabled={!conductorSeleccionado || loadingConfirmar}
-                >
-                  {loadingConfirmar ? "Confirmando..." : "Confirmar viaje"}
-                </button>
+                {estado !== "viaje_en_curso" && (
+                  <>
+                    <button
+                      className="btn-confirmar"
+                      onClick={handleConfirmar}
+                      disabled={!conductorSeleccionado || loadingConfirmar}
+                    >
+                      {loadingConfirmar ? "Confirmando..." : "Confirmar viaje"}
+                    </button>
 
-                <button className="btn-cancelar" onClick={handleCancelar}>
-                  Cancelar
-                </button>
+                    <button className="btn-cancelar" onClick={handleCancelar}>
+                      Cancelar
+                    </button>
+                  </>
+                )}
+
+                {estado === "viaje_en_curso" && (
+                  <>
+                    <button
+                      className="btn-confirmar"
+                      onClick={handleFinalizarLocal}
+                    >
+                      Finalizar viaje
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
-          {estado === "confirmado" && (
-            <div className="confirmacion-exitosa">
-              <h3>¡Viaje confirmado!</h3>
-            </div>
-          )}
+          <div className="panel-viaje">
+            {estado === "buscando" && (
+              <div className="panel-busqueda">
+                <div className="loader"></div>
+                <p>Buscando conductores...</p>
+              </div>
+            )}
 
-          {estado === "cancelado" && (
-            <div className="cancelado">
-              <h3>Has cancelado el viaje.</h3>
-            </div>
-          )}
+            {estado === "confirmando" && (
+              <div className="confirmar-viaje-container">
+                <div className="lista-conductores">
+                  {loadingConductores ? (
+                    <p>Cargando...</p>
+                  ) : conductores.length === 0 ? (
+                    <p>No hay conductores disponibles.</p>
+                  ) : (
+                    conductores.map((c) => {
+                      const isSelected =
+                        conductorSeleccionado?.id_conductor === c.id_conductor;
+                      const foto =
+                        c.foto_perfil ||
+                        "https://randomuser.me/api/portraits/lego/1.jpg";
+
+                      return (
+                        <div
+                          key={c.id_conductor}
+                          className={`card-conductor ${
+                            isSelected ? "seleccionado" : ""
+                          }`}
+                          onClick={() => setConductorSeleccionado(c)}
+                        >
+                          <img
+                            src={foto}
+                            className="foto-conductor"
+                            alt="foto conductor"
+                          />
+                          <div className="info-conductor">
+                            <h4>
+                              {c.nombre} {c.apellido}
+                            </h4>
+                            <p className="vehiculo">
+                              {c.tipo || "-"} {c.marca || "-"} {c.modelo || "-"}{" "}
+                              – {c.placa || "-"}
+                            </p>
+                            <p className="telefono">{c.telefono}</p>
+                            <p className={`estado ${c.estado_verificacion}`}>
+                              {c.estado_verificacion?.toUpperCase() ||
+                                "PENDIENTE"}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {estado === "confirmado" && (
+              <div className="confirmacion-exitosa">
+                <h3>¡Viaje confirmado!</h3>
+                <p>Esperando a que el conductor acepte...</p>
+              </div>
+            )}
+
+            {estado === "viaje_en_curso" && viajeActivo && (
+              <div className="seguimiento-panel">
+                <h3>Seguimiento en tiempo real</h3>
+                <p>
+                  Conductor:{" "}
+                  {viajeActivo?.conductor?.nombre ||
+                    conductorSeleccionado?.nombre ||
+                    "—"}
+                </p>
+                <p>
+                  ID viaje: {viajeActivo?.id_viaje ?? viajeActivo?.id ?? "—"}
+                </p>
+                <p>
+                  Ubicación conductor:{" "}
+                  {ubicacionConductor
+                    ? `${ubicacionConductor[0].toFixed(
+                        6
+                      )}, ${ubicacionConductor[1].toFixed(6)}`
+                    : "Cargando..."}
+                </p>
+              </div>
+            )}
+
+            {estado === "finalizado" && (
+              <div className="confirmacion-exitosa">
+                <h3>Viaje finalizado</h3>
+                <p>Gracias por usar Moviiq.</p>
+              </div>
+            )}
+
+            {estado === "cancelado" && (
+              <div className="cancelado">
+                <h3>Has cancelado el viaje.</h3>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

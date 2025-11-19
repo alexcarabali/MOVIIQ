@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import {
   Home,
   Bell,
@@ -11,162 +11,218 @@ import {
   ChevronRight,
   MapPin,
 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+} from "react-leaflet";
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import "./page.modules.css";
 import socket from "../utils/socket";
 import { useAuth } from "../context/AuthContext";
 
-// ================= ICONOS =================
+/* ICONOS */
 const iconConductor = new L.Icon({
   iconUrl: "/icons/car.png",
   iconSize: [35, 35],
 });
-
 const iconPasajero = new L.Icon({
   iconUrl: "/icons/passenger.png",
   iconSize: [35, 35],
 });
 
-// =====================================================
-// ===============  COMPONENTE PRINCIPAL  ==============
-// =====================================================
-
 export default function HomeConductor() {
-  const auth = (useAuth?.() ?? null) as any;
-  const user = auth?.user ?? auth ?? null;
+  const auth = useAuth?.();
+  const user = (auth as any)?.user ?? null;
 
   const [viajes, setViajes] = useState<any[]>([]);
   const [solicitud, setSolicitud] = useState<any | null>(null);
-
   const [posicion, setPosicion] = useState<[number, number] | null>(null);
+  const [estado, setEstado] = useState<"disponible" | "ocupado">("disponible");
   const [conectado, setConectado] = useState(false);
-  const [estado, setEstado] = useState("disponible");
-
   const [conductor, setConductor] = useState<any>(null);
   const [mostrarSidebar, setMostrarSidebar] = useState(false);
   const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
   const [notificaciones, setNotificaciones] = useState<string[]>([]);
+  const [viajeActivo, setViajeActivo] = useState<any | null>(null);
+  const [pathPoints, setPathPoints] = useState<[number, number][]>([]);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const socketRef = useRef<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(socket ?? null);
+  const seguimientoIntervalRef = useRef<number | null>(null);
 
-  // =====================================================
-  // ===================== SOCKET.IO =====================
-  // =====================================================
+  // load conductor from context/localStorage
   useEffect(() => {
-    const fromStorage = localStorage.getItem("conductor");
-    const conductorGuardado = fromStorage ? JSON.parse(fromStorage) : null;
+    try {
+      const saved =
+        typeof window !== "undefined"
+          ? localStorage.getItem("conductor")
+          : null;
+      const parsed = saved ? JSON.parse(saved) : null;
+      setConductor(user ?? parsed);
+    } catch {
+      setConductor(user ?? null);
+    }
+  }, [user]);
 
-    const actual = user ?? conductorGuardado;
-    setConductor(actual);
+  // socket listeners
+  useEffect(() => {
+    const s = socketRef.current;
+    if (!s) return;
 
-    socketRef.current = socket as unknown as Socket;
+    const id_conductor =
+      conductor?.id_conductor ?? conductor?.id ?? conductor?.id_usuario ?? null;
 
-    /** Conexión */
     const onConnect = () => {
       setConectado(true);
-      setNotificaciones((prev) => [...prev, "🟢 Conectado al servidor"]);
-
-      const id =
-        actual?.id ?? actual?.id_conductor ?? actual?.id_usuario ?? null;
-
-      if (id) {
-        socket.emit("registrar_usuario", { id, rol: "conductor" });
-        console.log("🟢 Conductor registrado:", id);
+      setNotificaciones((p) => [...p, "🟢 Conectado al servidor"]);
+      if (id_conductor) {
+        s.emit("registrar_usuario", { id: id_conductor, rol: "conductor" });
       }
     };
 
-    /** Desconexión */
     const onDisconnect = () => {
       setConectado(false);
-      setNotificaciones((prev) => [...prev, "🔴 Desconectado del servidor"]);
+      setNotificaciones((p) => [...p, "🔴 Desconectado del servidor"]);
     };
 
-    /** Viaje Solicitado */
-    const onViajeSolicitud = (viaje: any) => {
-      const miId = actual?.id ?? actual?.id_conductor;
+    // Accept multiple incoming event names for compatibility
+    const onSolicitud = (viaje: any) => {
+      const targetId =
+        conductor?.id_conductor ??
+        conductor?.id ??
+        conductor?.id_usuario ??
+        null;
+      if (!targetId) return;
+      if (String(viaje.id_conductor) !== String(targetId)) return;
 
-      if (String(viaje.id_conductor) !== String(miId)) return;
-
-      setViajes((prev) => [...prev, viaje]);
+      setViajes((prev) => {
+        // avoid duplicates by id_viaje
+        if (
+          prev.some(
+            (v) =>
+              String(v.id_viaje ?? v.id) === String(viaje.id_viaje ?? viaje.id)
+          )
+        )
+          return prev;
+        return [...prev, viaje];
+      });
       setSolicitud(viaje);
-
-      setNotificaciones((prev) => [
-        ...prev,
-        `🚖 Nueva solicitud de viaje (${viaje.id_viaje})`,
+      setNotificaciones((p) => [
+        ...p,
+        `🚖 Nueva solicitud de viaje (${viaje.id_viaje ?? viaje.id ?? "?"})`,
       ]);
-
-      audioRef.current?.play();
+      audioRef.current?.play().catch(() => {});
     };
 
-    /** Viaje Asignado */
-    const onViajeAsignado = (viaje: any) => {
-      const miId = actual?.id ?? actual?.id_conductor;
-
-      if (String(viaje.id_conductor) !== String(miId)) return;
-
-      setViajes((prev) => [...prev, viaje]);
-      setSolicitud(viaje);
-
-      setNotificaciones((prev) => [
-        ...prev,
-        `🚖 Viaje asignado (${viaje.id_viaje})`,
-      ]);
-
-      audioRef.current?.play();
+    const onAsignado = (viaje: any) => {
+      // same handling as solicitud
+      onSolicitud(viaje);
     };
 
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("viaje_solicitud", onViajeSolicitud);
-    socket.on("viaje_asignado", onViajeAsignado);
+    const onIniciarForzado = (payload: any) => {
+      const id = payload?.id_conductor ?? payload?.conductor_id;
+      if (!id || String(id) !== String(id_conductor)) return;
+      setViajeActivo(payload.viaje ?? payload);
+      setNotificaciones((p) => [...p, `▶️ Forzando inicio viaje`]);
+    };
+
+    s.on("connect", onConnect);
+    s.on("disconnect", onDisconnect);
+    s.on("viaje_solicitud", onSolicitud);
+    s.on("solicitar_viaje", onSolicitud);
+    s.on("nuevo_viaje", onSolicitud);
+    s.on("viaje_asignado", onAsignado);
+    s.on("iniciar_seguimiento", onIniciarForzado);
+
+    if (s.connected) onConnect();
 
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("viaje_solicitud", onViajeSolicitud);
-      socket.off("viaje_asignado", onViajeAsignado);
+      s.off("connect", onConnect);
+      s.off("disconnect", onDisconnect);
+      s.off("viaje_solicitud", onSolicitud);
+      s.off("solicitar_viaje", onSolicitud);
+      s.off("nuevo_viaje", onSolicitud);
+      s.off("viaje_asignado", onAsignado);
+      s.off("iniciar_seguimiento", onIniciarForzado);
     };
-  }, [user]);
+  }, [conductor]);
 
-  // =====================================================
-  // =================== GEOLOCALIZACIÓN =================
-  // =====================================================
+  // geolocation initial
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setPosicion([pos.coords.latitude, pos.coords.longitude]);
-      });
-    }
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setPosicion([pos.coords.latitude, pos.coords.longitude]),
+      (err) => console.warn("Geo error:", err),
+      { enableHighAccuracy: true }
+    );
   }, []);
 
-  // =====================================================
-  // ===================== FUNCIONES =====================
-  // =====================================================
+  // tracking: when viajeActivo is set, send location every 2s
+  useEffect(() => {
+    const s = socketRef.current;
+    if (!s) return;
 
+    if (!viajeActivo) {
+      if (seguimientoIntervalRef.current) {
+        window.clearInterval(seguimientoIntervalRef.current);
+        seguimientoIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const sendLocation = () => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setPosicion([lat, lng]);
+          setPathPoints((prev) => [...prev, [lat, lng]]);
+          s.emit("ubicacion_conductor", {
+            id_viaje: viajeActivo.id_viaje ?? viajeActivo.id,
+            id_conductor: conductor?.id_conductor ?? conductor?.id,
+            lat,
+            lng,
+            timestamp: Date.now(),
+          });
+        },
+        (err) => console.warn("Geo (seguimiento) error:", err),
+        { enableHighAccuracy: true }
+      );
+    };
+
+    sendLocation();
+    const id = window.setInterval(sendLocation, 2000);
+    seguimientoIntervalRef.current = id;
+    return () => {
+      if (seguimientoIntervalRef.current) {
+        window.clearInterval(seguimientoIntervalRef.current);
+        seguimientoIntervalRef.current = null;
+      }
+    };
+  }, [viajeActivo, conductor]);
+
+  // functions
   const cambiarEstado = () => {
     const nuevo = estado === "disponible" ? "ocupado" : "disponible";
     setEstado(nuevo);
-
-    setNotificaciones((prev) => [...prev, `🔄 Estado cambiado: ${nuevo}`]);
-
-    socket.emit("actualizar_estado", {
-      id_conductor: conductor?.id ?? conductor?.id_conductor,
+    socketRef.current?.emit("actualizar_estado", {
+      id_conductor: conductor?.id_conductor ?? conductor?.id,
       estado: nuevo,
     });
+    setNotificaciones((p) => [...p, `🔄 Estado cambiado: ${nuevo}`]);
   };
 
   const responderSolicitud = (aceptado: boolean) => {
     if (!solicitud) return;
-
-    const id_viaje = solicitud.id_viaje;
-    const id_conductor = conductor?.id ?? conductor?.id_conductor;
-
-    socket.emit("respuesta_viaje", {
+    const id_viaje = solicitud.id_viaje ?? solicitud.id;
+    socketRef.current?.emit("respuesta_viaje", {
       id_viaje,
-      id_conductor,
+      id_conductor: conductor?.id_conductor ?? conductor?.id,
       aceptado,
       id_pasajero:
         solicitud.id_pasajero ??
@@ -174,29 +230,56 @@ export default function HomeConductor() {
         solicitud.id_usuario_pasajero,
     });
 
-    setNotificaciones((prev) => [
-      ...prev,
+    setNotificaciones((p) => [
+      ...p,
       aceptado
-        ? `✅ Aceptaste el viaje ${id_viaje}`
-        : `❌ Rechazaste el viaje ${id_viaje}`,
+        ? `✅ Aceptaste viaje ${id_viaje}`
+        : `❌ Rechazaste viaje ${id_viaje}`,
     ]);
 
-    setViajes((prev) =>
-      prev.filter((v) => String(v.id_viaje) !== String(id_viaje))
-    );
+    if (aceptado) {
+      // start local viajeActivo and let server notify passenger
+      setViajeActivo({ ...solicitud });
+      setViajes((prev) =>
+        prev.filter((v) => String(v.id_viaje ?? v.id) !== String(id_viaje))
+      );
+      // emit viaje_iniciado for compatibility; server likely should re-emit to passenger
+      socketRef.current?.emit("viaje_iniciado", {
+        id_viaje,
+        id_conductor: conductor?.id_conductor ?? conductor?.id,
+        id_pasajero:
+          solicitud.id_pasajero ??
+          solicitud.id_usuario ??
+          solicitud.id_usuario_pasajero,
+        viaje: solicitud,
+      });
+    } else {
+      setViajes((prev) =>
+        prev.filter((v) => v.id_viaje !== solicitud.id_viaje)
+      );
+    }
+
     setSolicitud(null);
   };
 
-  const manejarEventoSidebar = (evento: string) => {
-    if (evento === "abrirNoti") {
-      setMostrarNotificaciones(!mostrarNotificaciones);
-    }
+  const finalizarViaje = () => {
+    if (!viajeActivo) return;
+    const id_viaje = viajeActivo.id_viaje ?? viajeActivo.id;
+    socketRef.current?.emit("finalizar_viaje", {
+      id_viaje,
+      id_conductor: conductor?.id_conductor ?? conductor?.id,
+    });
+    setViajeActivo(null);
+    setPathPoints([]);
+    setNotificaciones((p) => [...p, `🏁 Viaje ${id_viaje} finalizado`]);
   };
 
-  // =====================================================
-  // ========================= UI ========================
-  // =====================================================
+  const manejarEventoSidebar = (evento: string) => {
+    if (evento === "abrirNoti")
+      setMostrarNotificaciones(!mostrarNotificaciones);
+  };
 
+  // UI
   const menuItems = [
     { icon: <Home size={22} />, label: "Inicio" },
     { icon: <Bell size={22} />, label: "Notificaciones", evento: "abrirNoti" },
@@ -208,7 +291,6 @@ export default function HomeConductor() {
     <div className="home-container">
       <audio ref={audioRef} src="/sounds/alert.mp3" preload="auto" />
 
-      {/* ================= SIDEBAR ================= */}
       <aside className={`sidebar ${mostrarSidebar ? "visible" : "oculta"}`}>
         <div className="sidebar-header">
           <h1 className={`sidebar-title ${!mostrarSidebar ? "hidden" : ""}`}>
@@ -244,11 +326,8 @@ export default function HomeConductor() {
         </div>
       </aside>
 
-      {/* ================= CONTENIDO PRINCIPAL ================= */}
       <div className="container-general">
         <div className="info-conductor">
-          <h1 className="titulo-conductor">🚗 Panel del Conductor</h1>
-
           <div
             className={`estado-conexion ${
               conectado ? "text-green-600" : "text-red-500"
@@ -257,25 +336,25 @@ export default function HomeConductor() {
             {conectado ? "🟢 Conectado" : "🔴 Desconectado"}
           </div>
 
-          {/* Info conductor */}
           <div className="card-datos">
             <p>
               <strong>Nombre:</strong> {conductor?.nombre || "—"}
             </p>
             <p>
-              <strong>Vehículo:</strong> {conductor?.vehiculo || "Desconocido"}{" "}
-              ({conductor?.placa || "—"})
+              <strong>Vehículo:</strong> {conductor?.vehiculo || "—"} (
+              {conductor?.placa || "—"})
             </p>
             <p>
               <strong>Estado:</strong>{" "}
               <span
                 className={
-                  estado === "disponible" ? "text-green-600" : "text-red-500"
+                  estado === "disponible" ? "text-green-600" : "text-red-600"
                 }
               >
                 {estado}
               </span>
             </p>
+
             <button
               onClick={cambiarEstado}
               className={`btn-estado ${
@@ -286,10 +365,19 @@ export default function HomeConductor() {
             >
               Cambiar a {estado === "disponible" ? "ocupado" : "disponible"}
             </button>
+
+            {viajeActivo && (
+              <button
+                onClick={finalizarViaje}
+                className="btn-rechazar"
+                style={{ marginLeft: 12 }}
+              >
+                Finalizar viaje
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Mapa */}
         {posicion ? (
           <div className="mapa-container">
             <MapContainer center={posicion} zoom={14} className="mapa-leaflet">
@@ -298,43 +386,71 @@ export default function HomeConductor() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
 
-              {/* 🚗 Posición del conductor */}
               <Marker position={posicion} icon={iconConductor}>
                 <Popup>Tu ubicación actual</Popup>
               </Marker>
 
-              {/* 📍 Viajes disponibles */}
+              {(solicitud || viajeActivo) && (
+                <>
+                  <Marker
+                    position={[
+                      (solicitud ?? viajeActivo).origen_lat,
+                      (solicitud ?? viajeActivo).origen_lng,
+                    ]}
+                    icon={iconPasajero}
+                  >
+                    <Popup>Origen pasajero</Popup>
+                  </Marker>
+                  <Marker
+                    position={[
+                      (solicitud ?? viajeActivo).destino_lat,
+                      (solicitud ?? viajeActivo).destino_lng,
+                    ]}
+                    icon={iconPasajero}
+                  >
+                    <Popup>Destino pasajero</Popup>
+                  </Marker>
+                </>
+              )}
+
               {viajes.map((v) => (
                 <Marker
-                  key={v.id_viaje}
+                  key={v.id_viaje ?? v.id}
                   position={[v.origen_lat, v.origen_lng]}
                   icon={iconPasajero}
                 >
                   <Popup>
                     <strong>{v.nombre_pasajero || "Pasajero"}</strong>
                     <br />
-                    {v.origen_lat}, {v.origen_lng} → {v.destino_lat},{" "}
-                    {v.destino_lng}
-                    <br />
                     <button
-                      onClick={() => responderSolicitud(true)}
+                      onClick={() => setSolicitud(v)}
                       className="btn-aceptar"
                     >
-                      Aceptar viaje
+                      Ver solicitud
                     </button>
                   </Popup>
                 </Marker>
               ))}
+
+              {pathPoints.length > 0 && <Polyline positions={pathPoints} />}
+
+              {viajeActivo && posicion && (
+                <Polyline
+                  positions={[
+                    posicion,
+                    [viajeActivo.origen_lat, viajeActivo.origen_lng],
+                  ]}
+                />
+              )}
             </MapContainer>
           </div>
         ) : (
           <p className="text-gray-500 text-center">
-            📍 Obteniendo tu ubicación...
+            📍 Obteniendo ubicación...
           </p>
         )}
       </div>
 
-      {/* ================= PANEL DE NOTIFICACIONES ================= */}
       {mostrarNotificaciones && (
         <div className="notificaciones-panel animate-fade-in">
           <h2 className="titulo-noti">🔔 Notificaciones</h2>
@@ -342,27 +458,22 @@ export default function HomeConductor() {
             notificaciones
               .slice()
               .reverse()
-              .map((n, idx) => (
-                <div key={idx} className="noti-item">
+              .map((n, i) => (
+                <div key={i} className="noti-item">
                   <MapPin size={16} />
                   <span>{n}</span>
                 </div>
               ))
           ) : (
-            <p className="text-gray-400 text-sm">Sin notificaciones aún.</p>
+            <p className="text-gray-400 text-sm">Sin notificaciones.</p>
           )}
         </div>
       )}
 
-      {/* ============ POPUP DE SOLICITUD (ACEPTAR/RECHAZAR) ============ */}
       {solicitud && (
         <div className="popup-solicitud">
           <div className="popup-card">
-            <h2>📩 Nueva solicitud de viaje</h2>
-            <p>
-              <strong>Pasajero:</strong>{" "}
-              {solicitud.nombre_pasajero ?? "Desconocido"}
-            </p>
+            <h2>📩 Nueva solicitud</h2>
             <p>
               <strong>Origen:</strong> {solicitud.origen_lat},{" "}
               {solicitud.origen_lng}
@@ -371,7 +482,6 @@ export default function HomeConductor() {
               <strong>Destino:</strong> {solicitud.destino_lat},{" "}
               {solicitud.destino_lng}
             </p>
-
             <div className="popup-actions">
               <button
                 className="btn-aceptar"

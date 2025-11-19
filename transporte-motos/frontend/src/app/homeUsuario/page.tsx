@@ -14,8 +14,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+import socket from "../utils/socket";
+
 export default function PageMapa() {
-  // 🔹 Coordenadas iniciales [lat, lng]
   const [origen, setOrigen] = useState<[number, number]>([3.4516, -76.532]);
   const [destino, setDestino] = useState<[number, number]>([3.41, -76.52]);
   const [direccionOrigen, setDireccionOrigen] = useState<string>("");
@@ -33,14 +34,13 @@ export default function PageMapa() {
     { icon: <Lock size={22} />, label: "Cerrar sesión" },
   ];
 
-  // 📍 Obtener ubicación actual
   const obtenerUbicacionActual = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const coords: [number, number] = [
           pos.coords.latitude,
           pos.coords.longitude,
-        ]; // [lat,lng]
+        ];
         setOrigen(coords);
 
         try {
@@ -56,17 +56,22 @@ export default function PageMapa() {
     }
   };
 
-  // 🚗 Pedir viaje
-  const handlePedirViaje = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert("¡Buscando conductor disponible...");
-  };
-
-  // 💾 Registrar viaje y redirigir
   const handleAceptar = async () => {
+    if (!direccionOrigen || !direccionDestino) {
+      alert("Debes seleccionar origen y destino antes de confirmar el viaje.");
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Confirmas el viaje?\n\n📍 Desde: ${direccionOrigen}\n🏁 Hasta: ${direccionDestino}\n💰 Precio estimado: $${
+        precio ?? 0
+      }`
+    );
+    if (!confirmar) return;
+
     const nuevoViaje = {
-      id_pasajero: 1, // 🔹 Cambia por el id del usuario logueado
-      id_conductor: null,
+      id_pasajero: 1,
+      id_conductor: 5,
       id_vehiculo: null,
       origen_lat: origen[0],
       origen_lng: origen[1],
@@ -74,75 +79,6 @@ export default function PageMapa() {
       destino_lng: destino[1],
       precio: precio ?? 0,
     };
-    // 💾 Confirmar y registrar viaje
-    const handleAceptar = async () => {
-      if (!direccionOrigen || !direccionDestino) {
-        alert(
-          "Debes seleccionar origen y destino antes de confirmar el viaje."
-        );
-        return;
-      }
-
-      // Mostrar resumen antes de confirmar
-      const confirmar = window.confirm(
-        `¿Confirmas el viaje?\n\n📍 Desde: ${direccionOrigen}\n🏁 Hasta: ${direccionDestino}\n💰 Precio estimado: $${
-          precio ?? 0
-        }`
-      );
-
-      if (!confirmar) {
-        alert("Viaje cancelado por el usuario.");
-        return;
-      }
-
-      const nuevoViaje = {
-        id_pasajero: 1, // 🔹 Cambia por el ID del usuario logueado
-        id_conductor: 5, // 🔹 Temporal o dinámico (según el conductor disponible)
-        id_vehiculo: null,
-        origen_lat: origen[0],
-        origen_lng: origen[1],
-        destino_lat: destino[0],
-        destino_lng: destino[1],
-        precio: precio ?? 0,
-      };
-
-      try {
-        const res = await fetch("http://localhost:4000/api/viajes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(nuevoViaje),
-        });
-
-        const data = await res.json();
-        console.log("✅ Viaje registrado:", data);
-
-        // 🔔 Notificar al conductor
-        await fetch("http://localhost:4000/api/notificar-conductor", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id_conductor: nuevoViaje.id_conductor,
-            viaje: data,
-          }),
-        });
-
-        // ✅ Redirigir al usuario a la pantalla de confirmación
-        const query = new URLSearchParams({
-          origenLat: origen[0].toString(),
-          origenLng: origen[1].toString(),
-          destinoLat: destino[0].toString(),
-          destinoLng: destino[1].toString(),
-          precio: (precio ?? 0).toString(),
-        });
-
-        router.push(`/confirmarRuta?${query.toString()}`);
-      } catch (error) {
-        console.error("❌ Error al registrar el viaje:", error);
-        alert("Hubo un problema al guardar el viaje. Intenta de nuevo.");
-      }
-    };
-
-    //=======================
 
     try {
       const res = await fetch("http://localhost:4000/api/viajes", {
@@ -154,17 +90,20 @@ export default function PageMapa() {
       const data = await res.json();
       console.log("✅ Viaje registrado:", data);
 
-      // 🔔 Notificar al conductor
-      await fetch("http://localhost:4000/api/notificar-conductor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_conductor: nuevoViaje.id_conductor,
-          viaje: data,
-        }),
+      // Emitimos standard 'solicitar_viaje' and also 'nuevo_viaje' for backwards compat.
+      socket.emit("solicitar_viaje", {
+        id_conductor: nuevoViaje.id_conductor,
+        viaje: data,
+      });
+      socket.emit("nuevo_viaje", {
+        id_conductor: nuevoViaje.id_conductor,
+        viaje: data,
+      });
+      socket.emit("solicitar-viaje", {
+        id_conductor: nuevoViaje.id_conductor,
+        viaje: data,
       });
 
-      // Redirigir
       const query = new URLSearchParams({
         origenLat: origen[0].toString(),
         origenLng: origen[1].toString(),
@@ -182,7 +121,6 @@ export default function PageMapa() {
 
   return (
     <div className="home-container">
-      {/* ================= SIDEBAR ================= */}
       <aside className={`sidebar ${mostrarSidebar ? "visible" : "oculta"}`}>
         <div className="sidebar-header">
           <h1 className={`sidebar-title ${!mostrarSidebar ? "hidden" : ""}`}>
@@ -212,11 +150,9 @@ export default function PageMapa() {
         </div>
       </aside>
 
-      {/* ================= CONTENIDO PRINCIPAL ================= */}
       <div className="container-general">
-        {/* Menú flotante */}
         <div className="menu-viaje-flotante">
-          <form onSubmit={handlePedirViaje}>
+          <form onSubmit={(e) => e.preventDefault()}>
             <input
               type="text"
               placeholder="¿Dónde te recogemos?"
@@ -231,7 +167,6 @@ export default function PageMapa() {
               readOnly
             />
 
-            {/* Botones rápidos */}
             <div className="botones-rapidos">
               <button type="button" onClick={() => setOrigen([3.45, -76.53])}>
                 🏠 Casa
@@ -244,29 +179,15 @@ export default function PageMapa() {
               </button>
             </div>
 
-            {/* Direcciones guardadas */}
             <div className="direcciones-guardadas">
-              <button
-                className="btn-dir-1"
-                onClick={() => alert("Dirección confirmada")}
-              >
-                Dirección uno
-              </button>
-              <button
-                className="btn-dir-1"
-                onClick={() => alert("Dirección confirmada")}
-              >
-                Dirección dos
-              </button>
+              <button className="btn-dir-1">Dirección uno</button>
+              <button className="btn-dir-1">Dirección dos</button>
             </div>
 
-            {/* Salmo */}
             <div className="salmito">
               <p>
-                El que habita al abrigo del Altísimo Morará bajo la sombra del
-                Omnipotente. Diré yo a Jehová: Esperanza mía, y castillo mío; mi
-                Dios, en quien confiaré. Él te librará del lazo del cazador, de
-                la peste destructora.
+                El que habita al abrigo del Altísimo morará bajo la sombra del
+                Omnipotente...
               </p>
             </div>
           </form>
@@ -276,14 +197,12 @@ export default function PageMapa() {
           </button>
         </div>
 
-        {/* ================= MAPA ================= */}
         <div className="map-container">
           <MapaLeaflet
             origen={origen}
             destino={destino}
             setPrecio={setPrecio}
             onClickMapa={(coords) => {
-              // coords ya vienen como [lat,lng]
               setDestino(coords);
               fetch(
                 `https://nominatim.openstreetmap.org/reverse?lat=${coords[0]}&lon=${coords[1]}&format=json`

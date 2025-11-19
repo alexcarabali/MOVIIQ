@@ -107,11 +107,16 @@
   width: calc(100% - 10px);
   margin: 5px;
   margin-top: 10px;
-  background-color: #40a8f4;
+  background-color: #6c5ce7;
   color: white;
   font-size: medium;
   padding: 10px;
   border-radius: 30px;
+}
+
+.section-login form button:hover {
+  background: #5443d7;
+  cursor: pointer;
 }
 
 .section-login form {
@@ -180,7 +185,7 @@
 .login-box button {
   width: 100%;
   padding: 0.8rem;
-  background: #0070f3;
+  background-color: #6c5ce7;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -190,5 +195,6 @@
 }
 
 .login-box button:hover {
-  background: #0059c1;
+  background: #5443d7;
+  cursor: pointer;
 }
